@@ -32,6 +32,7 @@ import {
   buildSettingsForm,
   formToDirtyUpdatePayload,
   formToNormalizedState,
+  mergeSettingsAfterSave,
   mergeSettingsPatch,
   normalizeSettingsShape,
   validateSettingsForm,
@@ -247,9 +248,10 @@ export class SettingsComponent implements OnInit {
       next: (updated) => {
         this.saving.set(false);
         const submitted = formToNormalizedState(this.form);
-        const merged = mergeSettingsPatch(
+        const merged = mergeSettingsAfterSave(
           submitted,
-          updated as unknown as Record<string, unknown>
+          updated as unknown as Record<string, unknown>,
+          payload as unknown as Record<string, unknown>
         ) as Record<string, unknown>;
         merged['id'] = (updated as SettingsResponseDto).id ?? orig.id;
         merged['updatedAt'] = (updated as SettingsResponseDto).updatedAt ?? orig.updatedAt;

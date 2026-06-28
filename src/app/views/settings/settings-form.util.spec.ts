@@ -4,12 +4,15 @@ import {
   formToDirtyUpdatePayload,
   formToNormalizedState,
   formToUpdatePayload,
+  mergeSettingsAfterSave,
   mergeSettingsPatch,
   normalizeSettingsShape,
   validateSettingsForm,
   validateSettingsState,
 } from './settings-form.util';
 import { buildSettingsApiResponse, MASKED_SECRET } from './data/settings.test-fixtures';
+
+const SYNTHETIC_SOLANA_ADDRESS = '11111111111111111111111111111111';
 import { getDefaultsSnapshot } from './settings-schema.util';
 
 describe('settings-form.util', () => {
@@ -147,13 +150,35 @@ describe('settings-form.util', () => {
 
       const submitted = formToNormalizedState(form);
       const partialResponse = { updatedAt: '2026-06-29T12:00:00.000Z' };
-      const merged = mergeSettingsPatch(submitted, partialResponse);
+      const merged = mergeSettingsAfterSave(submitted, partialResponse);
 
       expect(merged['strategy']).toMatchObject({
         maxTokenHoldPercent: 12,
         minVolume5mUsd: 9000,
       });
       expect(merged['updatedAt']).toBe('2026-06-29T12:00:00.000Z');
+    });
+
+    it('preserves withdrawalUsdtProfitAddress when PATCH echoes empty integrations', () => {
+      const apiSnapshot = buildSettingsApiResponse();
+      const form = buildSettingsForm(fb, apiSnapshot);
+      const profitAddress = '0x1234567890123456789012345678901234567890';
+
+      form.get('integrations.withdrawalUsdtProfitAddress')?.setValue(profitAddress);
+
+      const submitted = formToNormalizedState(form);
+      const payload = formToDirtyUpdatePayload(form, apiSnapshot);
+      const staleResponse = {
+        integrations: {
+          withdrawalUsdtProfitAddress: '',
+          nativeWithdrawalSolanaAddress: SYNTHETIC_SOLANA_ADDRESS,
+        },
+      };
+      const merged = mergeSettingsAfterSave(submitted, staleResponse, payload);
+
+      expect(merged['integrations']).toMatchObject({
+        withdrawalUsdtProfitAddress: profitAddress,
+      });
     });
   });
 

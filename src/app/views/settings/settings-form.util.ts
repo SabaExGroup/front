@@ -29,6 +29,44 @@ export function mergeSettingsPatch(
   return deepMerge(current, patch);
 }
 
+/**
+ * Merge PATCH /settings response onto submitted form state without clobbering user edits.
+ * API responses often omit changed fields, return `***` for secrets, or echo empty strings.
+ */
+export function mergeSettingsAfterSave(
+  submitted: Record<string, unknown>,
+  apiResponse: Record<string, unknown>,
+  patchSent: Record<string, unknown> = {}
+): Record<string, unknown> {
+  const sanitized = sanitizeSettingsApiOverlay(submitted, apiResponse);
+  return mergeSettingsPatch(mergeSettingsPatch(submitted, sanitized), patchSent);
+}
+
+function sanitizeSettingsApiOverlay(base: unknown, overlay: unknown): unknown {
+  if (overlay === '***') return undefined;
+
+  if (isPlainObject(base) && isPlainObject(overlay)) {
+    const result: Record<string, unknown> = {};
+    for (const [key, overlayValue] of Object.entries(overlay)) {
+      const baseValue = base[key];
+      const sanitized = sanitizeSettingsApiOverlay(baseValue, overlayValue);
+      if (sanitized === undefined) continue;
+      if (
+        typeof sanitized === 'string' &&
+        sanitized.trim() === '' &&
+        typeof baseValue === 'string' &&
+        baseValue.trim() !== ''
+      ) {
+        continue;
+      }
+      result[key] = sanitized;
+    }
+    return result;
+  }
+
+  return overlay;
+}
+
 export function getControlByPath(root: FormGroup, path: string): AbstractControl | null {
   return path.split('.').reduce<AbstractControl | null>((ctrl, segment) => {
     if (!ctrl || !(ctrl instanceof FormGroup)) return null;
