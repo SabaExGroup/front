@@ -546,88 +546,11 @@
 
       <!-- Analysis -->
       <c-tab-panel itemKey="analysis">
-        @if (!c.token?.address) {
-          <c-alert color="secondary">Token not launched yet — analysis available after TOKEN_LAUNCH.</c-alert>
-        } @else {
-          <div class="mb-3">
-            <button cButton color="primary" size="sm" [disabled]="analysisLoading()" (click)="loadAnalysis()">
-              @if (analysisLoading()) { <c-spinner size="sm" /> } @else { Load analysis }
-            </button>
-          </div>
-          <c-row class="g-4">
-            <c-col lg="4">
-              <c-card>
-                <c-card-header class="d-flex justify-content-between align-items-center">
-                  <strong>Token info</strong>
-                  @if (tokenInfo()?.provider; as provider) {
-                    <c-badge color="secondary">{{ provider }}</c-badge>
-                  }
-                </c-card-header>
-                <c-card-body>
-                  @if (tokenInfo(); as info) {
-                    <dl class="meta-list mb-0">
-                      <dt>Price</dt><dd>{{ info.priceUsd | currency }}</dd>
-                      <dt>Market cap</dt><dd>{{ info.marketCapUsd | currency }}</dd>
-                      <dt>Volume (24h)</dt><dd>{{ info.volume24hUsd | currency }}</dd>
-                      <dt>Liquidity</dt><dd>{{ info.liquidityUsd | currency }}</dd>
-                      <dt>Buys / sells</dt><dd>{{ info.buyCount }} / {{ info.sellCount }}</dd>
-                      <dt>Sentiment</dt>
-                      <dd>
-                        <c-badge [color]="tokenSentimentBadgeColor(info.sentiment)">{{ info.sentiment }}</c-badge>
-                      </dd>
-                      <dt>Updated</dt><dd>{{ info.updatedAt | date: 'medium' }}</dd>
-                    </dl>
-                  } @else {
-                    <span class="text-body-secondary small">Not loaded</span>
-                  }
-                </c-card-body>
-              </c-card>
-            </c-col>
-            <c-col lg="4">
-              <c-card>
-                <c-card-header><strong>Liquidity</strong></c-card-header>
-                <c-card-body>
-                  @if (liquidity(); as liq) {
-                    @if (liq.totalLiquidityUsd != null) {
-                      <div class="mb-2">Total liquidity: {{ liq.totalLiquidityUsd | currency }}</div>
-                    }
-                    @for (entry of analysisEntries(liq); track entry.key) {
-                      @if (entry.key !== 'totalLiquidityUsd' && entry.key !== 'pools') {
-                        <div class="small mb-1"><strong>{{ entry.key }}:</strong> {{ entry.value }}</div>
-                      }
-                    }
-                  } @else {
-                    <span class="text-body-secondary small">Not loaded</span>
-                  }
-                </c-card-body>
-              </c-card>
-            </c-col>
-            <c-col lg="4">
-              <c-card>
-                <c-card-header><strong>Security</strong></c-card-header>
-                <c-card-body>
-                  @if (security(); as sec) {
-                    <div class="mb-2">
-                      Score: <strong>{{ sec.score }}</strong>
-                      · <c-badge [color]="sec.isSafe ? 'success' : 'danger'">{{ sec.isSafe ? 'Safe' : 'Risky' }}</c-badge>
-                    </div>
-                    @if (sec.provider) { <div class="small mb-2">Provider: {{ sec.provider }}</div> }
-                    @if (sec.checkedAt) { <div class="small mb-2">Checked: {{ sec.checkedAt | date: 'medium' }}</div> }
-                    @if (sec.risks.length) {
-                      <ul class="small mb-0 ps-3">
-                        @for (risk of sec.risks; track $index) {
-                          <li>{{ risk.severity }} — {{ risk.description ?? risk.code }}</li>
-                        }
-                      </ul>
-                    }
-                  } @else {
-                    <span class="text-body-secondary small">Not loaded</span>
-                  }
-                </c-card-body>
-              </c-card>
-            </c-col>
-          </c-row>
-        }
+        <app-cycle-analysis-tab
+          [cycleId]="cycleId()"
+          [cycleStatus]="c.status"
+          [active]="activeTab() === 'analysis'"
+        />
       </c-tab-panel>
 
       <!-- Ops -->

@@ -1,0 +1,31 @@
+.stat-value {
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.meta-list {
+  font-size: 0.875rem;
+}
+
+.meta-list dt {
+  color: var(--cui-secondary-color);
+  font-weight: 500;
+  margin-bottom: 0.125rem;
+}
+
+.meta-list dd {
+  margin-bottom: 0.75rem;
+}
+
+.wallet-expand-row {
+  background: var(--cui-tertiary-bg);
+}
+
+.kpi-card {
+  height: 100%;
+}
+
+.multiple-primary {
+  color: var(--cui-primary);
+  font-weight: 600;
+}

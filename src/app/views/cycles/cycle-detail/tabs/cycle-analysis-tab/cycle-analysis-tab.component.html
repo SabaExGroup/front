@@ -1,0 +1,359 @@
+@if (loading() && !analysis()) {
+  <div class="text-center py-5">
+    <c-spinner />
+    <p class="mt-2 text-body-secondary small">Loading analysis…</p>
+  </div>
+} @else if (analysis(); as data) {
+  <!-- 1. Header + Sync -->
+  <c-card class="mb-4">
+    <c-card-body>
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <h5 class="mb-2 d-flex flex-wrap align-items-center gap-2">
+            @if (data.token?.symbol; as symbol) {
+              <span>{{ symbol }}</span>
+            } @else {
+              <span class="text-body-secondary">—</span>
+            }
+            <c-badge color="secondary">{{ data.network }}</c-badge>
+            <app-cycle-status-badge [status]="$any(data.status)" />
+          </h5>
+          @if (data.token; as token) {
+            <div class="small text-body-secondary">
+              {{ token.name }} · <code>{{ token.address }}</code>
+            </div>
+          }
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          @if (data.syncedAt) {
+            <c-badge color="success">{{ data.syncedAt | date: 'medium' }}</c-badge>
+          } @else {
+            <c-badge color="secondary">cached</c-badge>
+          }
+          <c-badge color="info">{{ data.dataQuality.nativeSource }}</c-badge>
+          <c-badge color="info">{{ data.dataQuality.tokenBalancesSource }}</c-badge>
+          <button
+            cButton
+            color="primary"
+            size="sm"
+            [disabled]="loading() || syncing()"
+            (click)="syncFromChain()"
+          >
+            @if (syncing()) { <c-spinner size="sm" class="me-1" /> }
+            Refresh from chain
+          </button>
+        </div>
+      </div>
+
+      @if (data.dataQuality.failedNativeSyncCount > 0 || data.dataQuality.tokenBalanceError) {
+        <c-alert color="warning" class="mt-3 mb-0">
+          @if (data.dataQuality.failedNativeSyncCount > 0) {
+            {{ data.dataQuality.failedNativeSyncCount }} native balance sync failure(s).
+          }
+          @if (data.dataQuality.tokenBalanceError) {
+            Token balance error: {{ data.dataQuality.tokenBalanceError }}
+          }
+        </c-alert>
+      }
+
+      @if (needsSync(data)) {
+        <c-alert color="warning" class="mt-3 mb-0">
+          Sync recommended — organic inflow confidence: {{ data.dataQuality.organicInflowConfidence }}.
+        </c-alert>
+      }
+
+      @if (hasLedgerDrift(data)) {
+        <c-alert color="danger" class="mt-3 mb-0">
+          ledger/logs mismatch (drift {{ formatUsd(data.economics.profitLedgerDriftUsd) }}).
+        </c-alert>
+      }
+    </c-card-body>
+  </c-card>
+
+  <!-- 2. KPI Cards -->
+  <c-row class="g-3 mb-4">
+    <c-col sm="6" xl="4">
+      <c-card class="kpi-card">
+        <c-card-body>
+          <div class="stat-value">{{ formatUsd(data.combined.totalUsd) }}</div>
+          <div class="text-body-secondary small">سرمایه کل ولت‌ها</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col sm="6" xl="4">
+      <c-card class="kpi-card">
+        <c-card-body>
+          <div class="stat-value">{{ formatUsd(data.combined.freeNativeUsd) }}</div>
+          <div class="text-body-secondary small">آزاد (Native)</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col sm="6" xl="4">
+      <c-card class="kpi-card">
+        <c-card-body>
+          <div class="stat-value">
+            {{ formatUsd(data.combined.tiedInTokensUsd) }}
+            + {{ data.combined.tiedPercent | number: '1.2-2' }}%
+          </div>
+          <div class="text-body-secondary small">بسته در توکن</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col sm="6" xl="4">
+      <c-card class="kpi-card">
+        <c-card-body>
+          <div class="stat-value">{{ formatUsd(data.economics.totalInvestedUsd) }}</div>
+          <div class="text-body-secondary small">سرمایه‌گذاری</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col sm="6" xl="4">
+      <c-card class="kpi-card">
+        <c-card-body>
+          <div class="stat-value">{{ formatMultiple(data.economics.totalReturnMultiple) }}</div>
+          <div class="text-body-secondary small">ROI واقعی</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col sm="6" xl="4">
+      <c-card class="kpi-card">
+        <c-card-body>
+          <div class="stat-value d-flex flex-wrap align-items-center gap-2">
+            {{ formatUsd(organicInflowUsd(data)) }}
+            <c-badge [color]="confidenceBadgeColor(inflowConfidence(data))">
+              {{ inflowConfidence(data) }}
+            </c-badge>
+          </div>
+          <div class="text-body-secondary small">Organic inflow</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col sm="6" xl="4">
+      <c-card class="kpi-card">
+        <c-card-body>
+          <div class="stat-value">{{ formatMultiple(data.economics.ecosystemImpactMultiple) }}</div>
+          <div class="text-body-secondary small">Ecosystem impact</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <!-- 3. Wallet columns -->
+  <c-row class="g-4 mb-4">
+    <c-col lg="6">
+      <c-card class="h-100">
+        <c-card-header><strong>Market Wallets</strong></c-card-header>
+        <c-card-body>
+          <div class="small mb-3">
+            Native: <strong>{{ formatUsd(data.marketWallets.nativeUsd) }}</strong>
+            | Token: <strong>{{ formatUsd(data.marketWallets.tokenUsd) }}</strong>
+            | Total: <strong>{{ formatUsd(data.marketWallets.totalUsd) }}</strong>
+          </div>
+          <div class="small text-body-secondary mb-3">
+            {{ data.marketWallets.totalNative }} native · {{ data.marketWallets.totalToken }} token
+            · {{ data.marketWallets.walletCount }} wallet(s)
+            @if (data.marketWallets.failedSyncCount > 0) {
+              · <span class="text-warning">{{ data.marketWallets.failedSyncCount }} sync error(s)</span>
+            }
+          </div>
+          @if (data.marketWallets.wallets.length === 0) {
+            <span class="text-body-secondary small">No wallets</span>
+          } @else {
+            <table cTable hover responsive small>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>address</th>
+                  <th>native</th>
+                  <th>token</th>
+                  <th>total</th>
+                  <th>syncError</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (w of data.marketWallets.wallets; track w.id) {
+                  <tr [class.table-warning]="!!w.syncError">
+                    <td>
+                      <button cButton color="link" size="sm" type="button" (click)="toggleWalletExpand('market', w)">
+                        {{ isWalletExpanded('market', w.id) ? '−' : '+' }}
+                      </button>
+                    </td>
+                    <td><code class="small">{{ w.address }}</code></td>
+                    <td>{{ formatUsd(w.nativeUsd) }}</td>
+                    <td>{{ formatUsd(w.tokenUsd) }}</td>
+                    <td>{{ formatUsd(w.totalUsd) }}</td>
+                    <td>
+                      @if (w.syncError) {
+                        <span class="text-danger small">{{ w.syncError }}</span>
+                      } @else { — }
+                    </td>
+                  </tr>
+                  @if (isWalletExpanded('market', w.id)) {
+                    <tr class="wallet-expand-row">
+                      <td colspan="6">
+                        <div class="small">
+                          balanceNative: {{ w.balanceNative }} · balanceToken: {{ w.balanceToken }}
+                          · active: {{ w.isActive ? 'yes' : 'no' }}
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col lg="6">
+      <c-card class="h-100">
+        <c-card-header><strong>Token Owner</strong></c-card-header>
+        <c-card-body>
+          <div class="small mb-3">
+            Native: <strong>{{ formatUsd(data.tokenOwnerWallets.nativeUsd) }}</strong>
+            | Token: <strong>{{ formatUsd(data.tokenOwnerWallets.tokenUsd) }}</strong>
+            | Total: <strong>{{ formatUsd(data.tokenOwnerWallets.totalUsd) }}</strong>
+          </div>
+          <div class="small text-body-secondary mb-3">
+            {{ data.tokenOwnerWallets.totalNative }} native · {{ data.tokenOwnerWallets.totalToken }} token
+            · {{ data.tokenOwnerWallets.walletCount }} wallet(s)
+            @if (data.tokenOwnerWallets.failedSyncCount > 0) {
+              · <span class="text-warning">{{ data.tokenOwnerWallets.failedSyncCount }} sync error(s)</span>
+            }
+          </div>
+          @if (data.tokenOwnerWallets.wallets.length === 0) {
+            <span class="text-body-secondary small">No wallets</span>
+          } @else {
+            <table cTable hover responsive small>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>address</th>
+                  <th>native</th>
+                  <th>token</th>
+                  <th>total</th>
+                  <th>syncError</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (w of data.tokenOwnerWallets.wallets; track w.id) {
+                  <tr [class.table-warning]="!!w.syncError">
+                    <td>
+                      <button cButton color="link" size="sm" type="button" (click)="toggleWalletExpand('tokenOwner', w)">
+                        {{ isWalletExpanded('tokenOwner', w.id) ? '−' : '+' }}
+                      </button>
+                    </td>
+                    <td><code class="small">{{ w.address }}</code></td>
+                    <td>{{ formatUsd(w.nativeUsd) }}</td>
+                    <td>{{ formatUsd(w.tokenUsd) }}</td>
+                    <td>{{ formatUsd(w.totalUsd) }}</td>
+                    <td>
+                      @if (w.syncError) {
+                        <span class="text-danger small">{{ w.syncError }}</span>
+                      } @else { — }
+                    </td>
+                  </tr>
+                  @if (isWalletExpanded('tokenOwner', w.id)) {
+                    <tr class="wallet-expand-row">
+                      <td colspan="6">
+                        <div class="small">
+                          balanceNative: {{ w.balanceNative }} · balanceToken: {{ w.balanceToken }}
+                          · active: {{ w.isActive ? 'yes' : 'no' }}
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <!-- 4. Organic Flow -->
+  <c-card class="mb-4">
+    <c-card-header class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <strong>Organic Flow</strong>
+      @if (data.organicFlow; as flow) {
+        <c-badge [color]="confidenceBadgeColor(flow.inflowConfidence)">{{ flow.inflowConfidence }}</c-badge>
+      }
+    </c-card-header>
+    <c-card-body>
+      @if (data.organicFlow; as flow) {
+        <c-row class="g-3">
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">Internal buy:</span> {{ formatUsd(flow.internalBuyUsd) }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">External buy:</span> {{ formatUsd(flow.externalBuyUsd) }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">Net organic:</span> {{ formatUsd(flow.externalInflowUsd) }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">Internal sell:</span> {{ formatUsd(flow.internalSellUsd) }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">External sell:</span> {{ formatUsd(flow.externalSellUsd) }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">Liquidity Δ:</span> {{ formatSignedUsd(flow.liquidityDeltaUsd) }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">Market cap Δ:</span> {{ formatSignedUsd(flow.marketCapDeltaUsd) }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">Organic wallets:</span> {{ flow.organicWalletCount }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">Holders:</span> {{ flow.holderCount }}</div>
+          </c-col>
+          <c-col sm="6" md="4">
+            <div class="small"><span class="text-body-secondary">Buy share organic:</span> {{ flow.organicBuySharePercent | number: '1.0-0' }}%</div>
+          </c-col>
+        </c-row>
+        @if (flow.inflowConfidence === 'low' || flow.inflowConfidence === 'unavailable') {
+          <c-alert color="danger" class="mt-3 mb-0">Sync recommended</c-alert>
+        }
+      } @else {
+        <c-alert color="secondary" class="mb-0">Token not launched yet</c-alert>
+      }
+    </c-card-body>
+  </c-card>
+
+  <!-- 5. Economics / Trades -->
+  <c-card class="mb-4">
+    <c-card-header><strong>Economics / Trades</strong></c-card-header>
+    <c-card-body>
+      <div class="small mb-3 d-flex flex-wrap gap-3">
+        <span>Funding: <strong>{{ formatUsd(data.economics.fundingUsd) }}</strong></span>
+        <span>|</span>
+        <span>Gas: <strong>{{ formatUsd(data.economics.gasUsd) }}</strong></span>
+        <span>|</span>
+        <span>Profit out: <strong>{{ formatUsd(data.economics.profitOutUsd) }}</strong></span>
+        <span>|</span>
+        <span>Emergency: <strong>{{ formatUsd(data.economics.emergencyUsd) }}</strong></span>
+      </div>
+      <div class="small mb-3 d-flex flex-wrap gap-3">
+        <span>Buy volume: <strong>{{ formatUsd(data.trades.buyUsd) }}</strong></span>
+        <span>|</span>
+        <span>Sell: <strong>{{ formatUsd(data.trades.sellUsd) }}</strong></span>
+        <span>|</span>
+        <span>Net buy: <strong>{{ formatUsd(data.trades.netBuyUsd) }}</strong></span>
+      </div>
+      <div class="small fw-semibold mb-2">Multiples:</div>
+      <div class="d-flex flex-wrap gap-3 small multiples-row">
+        <span>Portfolio: <strong>{{ formatMultiple(data.economics.portfolioMultiple) }}</strong></span>
+        <span>Profit: <strong>{{ formatMultiple(data.economics.profitMultiple) }}</strong></span>
+        <span class="multiple-primary">Return: <strong>{{ formatMultiple(data.economics.totalReturnMultiple) }}</strong></span>
+        <span>Organic: <strong>{{ formatMultiple(data.economics.externalInflowMultiple) }}</strong></span>
+        <span>Ecosystem: <strong>{{ formatMultiple(data.economics.ecosystemImpactMultiple) }}</strong></span>
+        <span>Liquidity: <strong>{{ formatMultiple(data.economics.liquidityMultiple) }}</strong></span>
+      </div>
+    </c-card-body>
+  </c-card>
+} @else if (loading()) {
+  <div class="text-center py-5"><c-spinner /></div>
+}

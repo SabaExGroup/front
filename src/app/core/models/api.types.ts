@@ -673,3 +673,120 @@ export interface TrendPackageResponseDto {
   generatedAt: string;
   createdAt?: string;
 }
+
+export type InflowConfidence = 'high' | 'medium' | 'low' | 'unavailable';
+export type InflowMethod = 'volume_split' | 'liquidity_delta' | 'hybrid' | 'unavailable';
+export type PoolMetricsSource = 'token_info_24h' | 'metric_snapshot' | 'visibility_5m' | 'unavailable';
+export type NativeSource = 'live_rpc' | 'db_with_live_price' | 'partial';
+export type TokenBalancesSource = 'on_chain' | 'unavailable';
+
+export interface CycleAnalysisWalletDto {
+  id: string;
+  address: string;
+  isActive: boolean;
+  nativeUsd: number;
+  tokenUsd: number;
+  totalUsd: number;
+  balanceNative: string;
+  balanceToken: string;
+  syncError?: string;
+}
+
+export interface CycleAnalysisWalletGroupDto {
+  walletCount: number;
+  nativeUsd: number;
+  tokenUsd: number;
+  totalUsd: number;
+  totalNative: string;
+  totalToken: string;
+  failedSyncCount: number;
+  wallets: CycleAnalysisWalletDto[];
+}
+
+export interface CycleAnalysisCombinedDto {
+  nativeUsd: number;
+  tokenUsd: number;
+  totalUsd: number;
+  freeNativeUsd: number;
+  tiedInTokensUsd: number;
+  tiedPercent: number;
+}
+
+export interface CycleAnalysisTradesDto {
+  buyCount: number;
+  sellCount: number;
+  buyUsd: number;
+  sellUsd: number;
+  netBuyUsd: number;
+}
+
+export interface CycleAnalysisOrganicFlowDto {
+  internalBuyUsd: number;
+  internalSellUsd: number;
+  externalBuyUsd: number;
+  externalSellUsd: number;
+  externalInflowUsd: number;
+  liquidityDeltaUsd: number;
+  marketCapDeltaUsd: number;
+  organicWalletCount: number;
+  holderCount: number;
+  organicBuySharePercent: number;
+  inflowConfidence: InflowConfidence;
+  inflowMethod: InflowMethod;
+  poolMetricsSource: PoolMetricsSource;
+}
+
+export interface CycleAnalysisEconomicsDto {
+  totalInvestedUsd: number;
+  currentPortfolioUsd: number;
+  totalRealizedUsd: number;
+  totalValueUsd: number;
+  ecosystemImpactUsd: number;
+  externalInflowUsd: number;
+  profitLedgerDriftUsd: number;
+  portfolioMultiple: number;
+  profitMultiple: number;
+  totalReturnMultiple: number;
+  ecosystemImpactMultiple: number;
+  externalInflowMultiple: number;
+  liquidityMultiple: number;
+  fundingUsd?: number;
+  gasUsd?: number;
+  profitOutUsd?: number;
+  emergencyUsd?: number;
+}
+
+export interface CycleAnalysisDataQualityDto {
+  nativeSource: NativeSource;
+  tokenBalancesSource: TokenBalancesSource;
+  organicInflowConfidence: InflowConfidence;
+  organicInflowMethod: string;
+  poolMetricsSource: string;
+  failedNativeSyncCount: number;
+  tokenBalanceError: string | null;
+}
+
+export interface CycleAnalysisTokenDto {
+  symbol: string;
+  name: string;
+  address: string;
+  priceUsd: number;
+  liquidityUsd: number;
+  marketCapUsd: number;
+  priceSource: string;
+}
+
+export interface CycleAnalysisResponseDto {
+  cycleId: string;
+  network: Network;
+  status: string;
+  syncedAt: string | null;
+  token: CycleAnalysisTokenDto | null;
+  marketWallets: CycleAnalysisWalletGroupDto;
+  tokenOwnerWallets: CycleAnalysisWalletGroupDto;
+  combined: CycleAnalysisCombinedDto;
+  trades: CycleAnalysisTradesDto;
+  organicFlow: CycleAnalysisOrganicFlowDto | null;
+  economics: CycleAnalysisEconomicsDto;
+  dataQuality: CycleAnalysisDataQualityDto;
+}

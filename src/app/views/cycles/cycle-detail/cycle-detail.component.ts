@@ -34,7 +34,7 @@ import {
 import { CycleStatusBadgeComponent } from '../../../shared/components/cycle-status-badge/cycle-status-badge.component';
 import { CyclesService } from '../../../core/services/cycles.service';
 import { WalletsService } from '../../../core/services/wallets.service';
-import { ProfitExtractorService, TokenAnalysisService } from '../../../core/services/profit-extractor.service';
+import { ProfitExtractorService } from '../../../core/services/profit-extractor.service';
 import { CycleOpsService } from '../../../core/services/cycle-ops.service';
 import { MainFeeWalletService } from '../../../core/services/main-fee-wallet.service';
 import { ToastService } from '../../../shared/services/toast.service';
@@ -45,13 +45,10 @@ import {
   CycleResumeSnapshotResponseDto,
   CycleRetryResponseDto,
   LaunchpadRecommendationDto,
-  LiquidityAnalysisResponseDto,
   MarketSessionDetailResponseDto,
   ProfitExtractorJobResponseDto,
   ProfitExtractorLogDto,
   ProfitExtractorStatusResponseDto,
-  SecurityReportResponseDto,
-  TokenInfoResponseDto,
   TokenLaunchResponseDto,
   TrendPackageResponseDto,
   WalletBalanceResponseDto,
@@ -63,7 +60,6 @@ import {
   CycleStep,
   isTerminalCycleStatus,
   jobStatusBadgeColor,
-  tokenSentimentBadgeColor,
   LAUNCHPADS,
   Launchpad,
   NETWORKS,
@@ -74,6 +70,7 @@ import {
 } from '../../../core/models/enums';
 import { extractErrorMessage } from '../../../core/utils/error.util';
 import { ApiService } from '../../../core/http/api.service';
+import { CycleAnalysisTabComponent } from './tabs/cycle-analysis-tab/cycle-analysis-tab.component';
 
 type CycleTab = 'overview' | 'wallets' | 'profit' | 'analysis' | 'ops';
 
@@ -113,6 +110,7 @@ type CycleTab = 'overview' | 'wallets' | 'profit' | 'analysis' | 'ops';
     TabsComponent,
     TabsContentComponent,
     TabsListComponent,
+    CycleAnalysisTabComponent,
   ],
 })
 export class CycleDetailComponent implements OnInit {
@@ -121,7 +119,6 @@ export class CycleDetailComponent implements OnInit {
   private readonly cycles = inject(CyclesService);
   private readonly wallets = inject(WalletsService);
   private readonly profit = inject(ProfitExtractorService);
-  private readonly analysis = inject(TokenAnalysisService);
   private readonly ops = inject(CycleOpsService);
   private readonly mainFee = inject(MainFeeWalletService);
   private readonly api = inject(ApiService);
@@ -174,12 +171,6 @@ export class CycleDetailComponent implements OnInit {
   lastProfitJob = signal<ProfitExtractorJobResponseDto | null>(null);
   profitLoading = signal(false);
 
-  // Analysis
-  tokenInfo = signal<TokenInfoResponseDto | null>(null);
-  liquidity = signal<LiquidityAnalysisResponseDto | null>(null);
-  security = signal<SecurityReportResponseDto | null>(null);
-  analysisLoading = signal(false);
-
   // Ops
   bestLaunchpad = signal<LaunchpadRecommendationDto | null>(null);
   marketDetail = signal<MarketSessionDetailResponseDto | null>(null);
@@ -196,7 +187,6 @@ export class CycleDetailComponent implements OnInit {
   readonly launchpadOptions = LAUNCHPADS;
   readonly walletTypeOptions = WALLET_TYPES;
   readonly jobStatusBadgeColor = jobStatusBadgeColor;
-  readonly tokenSentimentBadgeColor = tokenSentimentBadgeColor;
 
   private pollSub?: Subscription;
   private marketPollSub?: Subscription;
@@ -238,9 +228,6 @@ export class CycleDetailComponent implements OnInit {
     if (tab === 'profit' && !this.profitStatus()) {
       this.loadProfit();
     }
-    if (tab === 'analysis' && this.cycle()?.token?.address && !this.tokenInfo()) {
-      this.loadAnalysis();
-    }
     if (tab === 'ops' && this.cycle()?.marketSessionId && !this.marketDetail()) {
       this.refreshMarketSession();
     }
@@ -261,10 +248,6 @@ export class CycleDetailComponent implements OnInit {
     this.marketBalances.set(null);
     this.marketBalancesLoading.set(false);
     this.marketBalancesSyncing.set(false);
-    this.tokenInfo.set(null);
-    this.liquidity.set(null);
-    this.security.set(null);
-    this.analysisLoading.set(false);
     this.profitStatus.set(null);
     this.profitLogs.set([]);
     this.profitLogsTotal.set(0);
@@ -626,39 +609,6 @@ export class CycleDetailComponent implements OnInit {
     return Math.min(100, Math.round((ps.heldPercent / ps.maxPercent) * 100));
   }
 
-  loadAnalysis(): void {
-    const address = this.cycle()?.token?.address;
-    const network = this.cycle()?.network ?? 'SOLANA';
-    if (!address) {
-      this.toast.warning('No token address yet');
-      return;
-    }
-    this.analysisLoading.set(true);
-    let pending = 3;
-    const finish = (): void => {
-      pending -= 1;
-      if (pending === 0) {
-        this.analysisLoading.set(false);
-      }
-    };
-
-    this.analysis.getTokenInfo(address, network).subscribe({
-      next: (info) => this.tokenInfo.set(info),
-      error: (err) => this.toast.error(extractErrorMessage(err)),
-      complete: finish,
-    });
-    this.analysis.getLiquidity(address, network, this.cycle()?.launchpad ?? undefined).subscribe({
-      next: (liq) => this.liquidity.set(liq),
-      error: (err) => this.toast.error(extractErrorMessage(err)),
-      complete: finish,
-    });
-    this.analysis.checkSecurity(network, address).subscribe({
-      next: (sec) => this.security.set(sec),
-      error: (err) => this.toast.error(extractErrorMessage(err)),
-      complete: finish,
-    });
-  }
-
   marketBalanceSourceLabel(wallet: CycleMarketWalletBalanceRowDto): string {
     if (wallet.syncError) {
       return wallet.syncError;
@@ -774,11 +724,6 @@ export class CycleDetailComponent implements OnInit {
         this.toast.error(extractErrorMessage(err));
       },
     });
-  }
-
-  analysisEntries(obj: Record<string, unknown> | null | undefined): { key: string; value: unknown }[] {
-    if (!obj) return [];
-    return Object.entries(obj).map(([key, value]) => ({ key, value }));
   }
 
   private loadResumeSnapshot(id: string, status: string): void {
