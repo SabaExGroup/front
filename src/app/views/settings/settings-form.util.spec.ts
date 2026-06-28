@@ -2,7 +2,9 @@ import { FormBuilder } from '@angular/forms';
 import {
   buildSettingsForm,
   formToDirtyUpdatePayload,
+  formToNormalizedState,
   formToUpdatePayload,
+  mergeSettingsPatch,
   normalizeSettingsShape,
   validateSettingsForm,
   validateSettingsState,
@@ -119,6 +121,39 @@ describe('settings-form.util', () => {
       const payload = formToDirtyUpdatePayload(form, apiSnapshot);
 
       expect(payload.treasury?.['consolidate']).toBeUndefined();
+    });
+
+    it('includes maxTokenHoldPercent under strategy when changed', () => {
+      const apiSnapshot = buildSettingsApiResponse();
+      const form = buildSettingsForm(fb, apiSnapshot);
+
+      form.get('strategy.maxTokenHoldPercent')?.setValue(12);
+
+      const payload = formToDirtyUpdatePayload(form, apiSnapshot);
+
+      expect(payload).toEqual({
+        strategy: {
+          maxTokenHoldPercent: 12,
+        },
+      });
+    });
+
+    it('preserves submitted hoisted strategy fields when PATCH response is partial', () => {
+      const apiSnapshot = buildSettingsApiResponse();
+      const form = buildSettingsForm(fb, apiSnapshot);
+
+      form.get('strategy.maxTokenHoldPercent')?.setValue(12);
+      form.get('strategy.minVolume5mUsd')?.setValue(9000);
+
+      const submitted = formToNormalizedState(form);
+      const partialResponse = { updatedAt: '2026-06-29T12:00:00.000Z' };
+      const merged = mergeSettingsPatch(submitted, partialResponse);
+
+      expect(merged['strategy']).toMatchObject({
+        maxTokenHoldPercent: 12,
+        minVolume5mUsd: 9000,
+      });
+      expect(merged['updatedAt']).toBe('2026-06-29T12:00:00.000Z');
     });
   });
 

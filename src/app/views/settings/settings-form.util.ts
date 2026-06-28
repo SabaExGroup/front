@@ -335,6 +335,14 @@ export function validateSettingsState(state: Record<string, unknown>): string | 
   return null;
 }
 
+/** Normalized settings object from the live form — use as merge base after PATCH. */
+export function formToNormalizedState(form: FormGroup): Record<string, unknown> {
+  const raw = formGroupToObject(form) as Record<string, unknown>;
+  delete raw['id'];
+  delete raw['updatedAt'];
+  return coerceFormTypes(normalizeSettingsShape(raw), SETTINGS_TYPE_SCHEMA) as Record<string, unknown>;
+}
+
 export function formToDirtyUpdatePayload(
   form: FormGroup,
   original: Record<string, unknown>

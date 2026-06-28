@@ -23,6 +23,7 @@
     "ignitionDurationMinutes": 6,
     "minVolume5mUsd": 7500,
     "minLiquidityRatio": 0.52,
+    "maxTokenHoldPercent": 8,
     "buyBiasPercent": 66,
     "jitoBundleAtLaunch": true,
     "preFundWallets": true,

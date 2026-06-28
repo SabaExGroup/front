@@ -31,7 +31,9 @@ import { extractErrorMessage } from '../../core/utils/error.util';
 import {
   buildSettingsForm,
   formToDirtyUpdatePayload,
+  formToNormalizedState,
   mergeSettingsPatch,
+  normalizeSettingsShape,
   validateSettingsForm,
 } from './settings-form.util';
 import {
@@ -179,9 +181,8 @@ export class SettingsComponent implements OnInit {
     this.loading.set(true);
     this.settingsService.get().subscribe({
       next: (settings) => {
-        const merged = mergeSettingsPatch(
-          getDefaultsSnapshot(),
-          settings as unknown as Record<string, unknown>
+        const merged = normalizeSettingsShape(
+          mergeSettingsPatch(getDefaultsSnapshot(), settings as unknown as Record<string, unknown>)
         );
         this.original.set(merged as unknown as SettingsResponseDto);
         this.form = buildSettingsForm(this.fb, merged);
@@ -245,11 +246,14 @@ export class SettingsComponent implements OnInit {
     this.settingsService.patch(payload).subscribe({
       next: (updated) => {
         this.saving.set(false);
+        const submitted = formToNormalizedState(this.form);
         const merged = mergeSettingsPatch(
-          orig as unknown as Record<string, unknown>,
+          submitted,
           updated as unknown as Record<string, unknown>
-        ) as unknown as SettingsResponseDto;
-        this.original.set(merged);
+        ) as Record<string, unknown>;
+        merged['id'] = (updated as SettingsResponseDto).id ?? orig.id;
+        merged['updatedAt'] = (updated as SettingsResponseDto).updatedAt ?? orig.updatedAt;
+        this.original.set(merged as unknown as SettingsResponseDto);
         this.toast.success('Settings saved');
         this.form = buildSettingsForm(this.fb, merged as unknown as Record<string, unknown>);
         this.refreshSaveBlocker();
