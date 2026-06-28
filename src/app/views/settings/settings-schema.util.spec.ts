@@ -29,6 +29,11 @@ describe('settings-schema.util', () => {
       expect(keys).toContain('strategy.emergencyBrake.sellMode');
       expect(keys).toContain('strategy.emergencyBrake.sellConcurrency');
       expect(keys).toContain('strategy.emergencyBrake.sellOwnerLast');
+      expect(keys).toContain('strategy.distribution.enabled');
+      expect(keys).toContain('strategy.distribution.postOnLaunch');
+      expect(keys).toContain('strategy.distribution.webhookUrl');
+      expect(keys).toContain('strategy.botCascade.tradesPerMinuteMultiplier');
+      expect(keys).toContain('strategy.botCascade.pauseSellsSeconds');
     });
 
     it('uses human-readable section titles for nested strategy groups', () => {
@@ -41,6 +46,8 @@ describe('settings-schema.util', () => {
       expect(titles).toContain('Cycle Schedule');
       expect(titles).toContain('Trend Finder');
       expect(titles).toContain('Emergency Brake');
+      expect(titles).toContain('Token Distribution');
+      expect(titles).toContain('Bot Cascade');
     });
   });
 
@@ -96,6 +103,15 @@ describe('settings-schema.util', () => {
       const strategy = defaults['strategy'] as Record<string, unknown>;
       expect(strategy['targetTradesPerMinute']).toBe(420);
       expect(strategy['buyBiasPercent']).toBe(66);
+
+      const distribution = strategy['distribution'] as Record<string, unknown>;
+      expect(distribution['enabled']).toBe(true);
+      expect(distribution['telegramChatIds']).toEqual(['-1004317150546']);
+      expect(distribution['launchDelaySeconds']).toBe(8);
+
+      const botCascade = strategy['botCascade'] as Record<string, unknown>;
+      expect(botCascade['enabled']).toBe(true);
+      expect(botCascade['tradesPerMinuteMultiplier']).toBe(1.6);
 
       const integrations = defaults['integrations'] as Record<string, unknown>;
       expect(integrations['openaiApiKey']).toBe('');

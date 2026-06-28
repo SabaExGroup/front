@@ -50,6 +50,23 @@ describe('settings-form.util', () => {
       });
     });
 
+    it('diffs strategy.distribution.telegramChatIds as string array', () => {
+      const apiSnapshot = buildSettingsApiResponse();
+      const form = buildSettingsForm(fb, apiSnapshot);
+
+      form.get('strategy.distribution.telegramChatIds')?.setValue('-100111\n-100222');
+
+      const payload = formToDirtyUpdatePayload(form, apiSnapshot);
+
+      expect(payload).toEqual({
+        strategy: {
+          distribution: {
+            telegramChatIds: ['-100111', '-100222'],
+          },
+        },
+      });
+    });
+
     it('diffs treasury.replenish when enabled toggles', () => {
       const apiSnapshot = buildSettingsApiResponse();
       const form = buildSettingsForm(fb, apiSnapshot);
@@ -214,6 +231,11 @@ describe('settings-form.util', () => {
       expect(form.get('strategy.mode')?.value).toBe('BLITZ');
       expect(form.get('strategy.visibility.minHoldBeforeSellSeconds')?.value).toBe(4);
       expect(form.get('strategy.profitExtract.postPeakGraceSec')?.value).toBe(90);
+      expect(form.get('strategy.distribution.enabled')?.value).toBe(true);
+      expect(form.get('strategy.distribution.telegramChatIds')?.value).toBe('-1004317150546');
+      expect(form.get('strategy.distribution.webhookUrl')?.value).toContain('token-distribution');
+      expect(form.get('strategy.botCascade.tradesPerMinuteMultiplier')?.value).toBe(1.6);
+      expect(form.get('strategy.botCascade.buyBiasBoostPercent')?.value).toBe(6);
       expect(form.get('treasury.replenish.enabled')?.value).toBe(true);
       expect(form.get('treasury.replenish.profitUsdtSweepEnabled')?.value).toBe(true);
       expect(form.get('treasury.replenish.minProfitUsdtSweepUsd')?.value).toBe(10);

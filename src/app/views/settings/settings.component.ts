@@ -132,6 +132,15 @@ export class SettingsComponent implements OnInit {
           hint: 'Creator cap only (TOKEN_OWNER)',
         });
       }
+      if (section.path === 'strategy.distribution') {
+        return this.appendField(section, {
+          key: 'telegramChatIds',
+          label: 'Telegram chat IDs (one per line)',
+          type: 'textarea',
+          col: 12,
+          hint: 'Distribution channels — separate from alert chat IDs under Telegram & Proxy',
+        });
+      }
       return section;
     });
   }

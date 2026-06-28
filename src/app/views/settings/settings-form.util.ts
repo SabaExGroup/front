@@ -134,6 +134,9 @@ function buildControl(fb: FormBuilder, key: string, value: unknown): AbstractCon
   if (key === 'chatIds' && Array.isArray(value)) {
     return fb.control((value as string[]).join('\n'));
   }
+  if (key === 'telegramChatIds' && Array.isArray(value)) {
+    return fb.control((value as string[]).join('\n'));
+  }
   if (key === 'tokenLabels' && Array.isArray(value)) {
     return fb.control((value as string[]).join('\n'));
   }
@@ -403,7 +406,7 @@ function formGroupToObject(control: AbstractControl): unknown {
   if (typeof value === 'string' && control.parent instanceof FormGroup) {
     const parentKey = Object.entries(control.parent.controls).find(([, c]) => c === control)?.[0];
 
-    if (parentKey === 'chatIds' || parentKey === 'allowedDestinationAddresses' || parentKey === 'tokenLabels') {
+    if (parentKey === 'chatIds' || parentKey === 'telegramChatIds' || parentKey === 'allowedDestinationAddresses' || parentKey === 'tokenLabels') {
       return value.split('\n').map((s) => s.trim()).filter(Boolean);
     }
     if (parentKey === 'providerPriority') {

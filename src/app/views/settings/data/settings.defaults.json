@@ -117,6 +117,21 @@
       "sellStaggerMsMin": 120,
       "sellStaggerMsMax": 350,
       "sellOwnerLast": true
+    },
+    "distribution": {
+      "enabled": true,
+      "telegramChatIds": ["-1004317150546"],
+      "postOnLaunch": true,
+      "postOnBotMagnet": true,
+      "launchDelaySeconds": 8,
+      "includeChartLinks": true,
+      "webhookUrl": "https://YOUR-N8N-DOMAIN/webhook/token-distribution"
+    },
+    "botCascade": {
+      "enabled": true,
+      "tradesPerMinuteMultiplier": 1.6,
+      "buyBiasBoostPercent": 6,
+      "pauseSellsSeconds": 20
     }
   },
   "integrations": {

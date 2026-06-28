@@ -356,4 +356,8 @@
   </c-card>
 } @else if (loading()) {
   <div class="text-center py-5"><c-spinner /></div>
+} @else {
+  <c-alert color="secondary" class="mb-0">
+    Analysis not loaded — open this tab or use Refresh from chain after the API is available.
+  </c-alert>
 }

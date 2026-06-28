@@ -1,0 +1,107 @@
+<c-card class="mb-4">
+  <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <strong>Market wallet balances</strong>
+    <div class="d-flex flex-wrap gap-2">
+      <button
+        cButton
+        color="light"
+        size="sm"
+        type="button"
+        [disabled]="loading() || syncing()"
+        (click)="load()"
+      >
+        @if (loading()) { <c-spinner size="sm" /> } @else { Load (DB) }
+      </button>
+      <button
+        cButton
+        color="primary"
+        size="sm"
+        type="button"
+        [disabled]="loading() || syncing()"
+        (click)="syncFromChain()"
+      >
+        @if (syncing()) { <c-spinner size="sm" /> } @else { Sync from chain }
+      </button>
+    </div>
+  </c-card-header>
+  <c-card-body>
+    <p class="small text-body-secondary mb-3">
+      All MARKET wallets for this cycle (active and inactive). Sync runs in parallel via RPC with force refresh.
+    </p>
+    @if (loading() && !balances()) {
+      <div class="text-center py-3"><c-spinner /></div>
+    } @else if (balances(); as mb) {
+      @if (mb.failedSyncCount > 0) {
+        <c-alert color="warning" class="mb-3">
+          {{ mb.failedSyncCount }} wallet{{ mb.failedSyncCount === 1 ? '' : 's' }} failed to sync — remaining wallets completed.
+        </c-alert>
+      }
+      <c-row class="g-3 mb-4 meta-summary">
+        <c-col sm="6" md="3">
+          <div class="small text-body-secondary">Total native</div>
+          <div class="fw-semibold">{{ mb.totalNative }}</div>
+        </c-col>
+        <c-col sm="6" md="3">
+          <div class="small text-body-secondary">Total USD</div>
+          <div class="fw-semibold">{{ mb.totalUsd | currency }}</div>
+        </c-col>
+        <c-col sm="6" md="3">
+          <div class="small text-body-secondary">Wallets</div>
+          <div class="fw-semibold">{{ mb.activeWalletCount }} active / {{ mb.walletCount }} total</div>
+        </c-col>
+        <c-col sm="6" md="3">
+          <div class="small text-body-secondary">Last synced (RPC)</div>
+          <div class="fw-semibold">
+            @if (mb.syncedAt) {
+              {{ mb.syncedAt | date: 'medium' }}
+            } @else {
+              —
+            }
+          </div>
+        </c-col>
+      </c-row>
+      @if (mb.wallets.length === 0) {
+        <p class="text-body-secondary mb-0">No MARKET wallets for this cycle.</p>
+      } @else {
+        <table cTable hover responsive small>
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Native</th>
+              <th>USD</th>
+              <th>Active</th>
+              <th>Refreshed</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (w of mb.wallets; track w.id) {
+              <tr [class.table-warning]="w.syncError">
+                <td><code class="small">{{ w.address }}</code></td>
+                <td>{{ w.balanceNative }}</td>
+                <td>{{ w.balanceUsd | currency }}</td>
+                <td>{{ w.isActive ? 'Yes' : 'No' }}</td>
+                <td>
+                  @if (w.refreshedAt) {
+                    {{ w.refreshedAt | date: 'short' }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  @if (w.syncError) {
+                    <span class="text-danger small">{{ sourceLabel(w) }}</span>
+                  } @else {
+                    <span class="text-body-secondary small">{{ sourceLabel(w) }}</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    } @else {
+      <span class="text-body-secondary small">Not loaded — use Load (DB) or Sync from chain.</span>
+    }
+  </c-card-body>
+</c-card>

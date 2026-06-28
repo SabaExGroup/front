@@ -145,6 +145,30 @@ export const STRATEGY_SECTIONS: SettingsSectionConfig[] = [
       ]},
     ],
   },
+  {
+    id: 'distribution',
+    title: 'Token Distribution',
+    path: 'strategy.distribution',
+    fields: [
+      { key: 'enabled', label: 'Enabled', type: 'boolean', col: 4 },
+      { key: 'postOnLaunch', label: 'Post on launch', type: 'boolean', col: 4 },
+      { key: 'postOnBotMagnet', label: 'Post on bot magnet', type: 'boolean', col: 4 },
+      { key: 'launchDelaySeconds', label: 'Launch delay (sec)', type: 'number', min: 0, col: 4 },
+      { key: 'includeChartLinks', label: 'Include chart links', type: 'boolean', col: 4 },
+      { key: 'webhookUrl', label: 'Webhook URL', type: 'text', col: 12, hint: 'n8n webhook for token distribution posts' },
+    ],
+  },
+  {
+    id: 'bot-cascade',
+    title: 'Bot Cascade',
+    path: 'strategy.botCascade',
+    fields: [
+      { key: 'enabled', label: 'Enabled', type: 'boolean', col: 4 },
+      { key: 'tradesPerMinuteMultiplier', label: 'Trades/min multiplier', type: 'number', step: 0.1, min: 0, col: 4 },
+      { key: 'buyBiasBoostPercent', label: 'Buy bias boost %', type: 'number', min: 0, max: 100, col: 4 },
+      { key: 'pauseSellsSeconds', label: 'Pause sells (sec)', type: 'number', min: 0, col: 4 },
+    ],
+  },
 ];
 
 export const INTEGRATION_WITHDRAWAL_FIELDS: SettingsFieldConfig[] = [

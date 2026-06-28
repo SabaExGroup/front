@@ -5,7 +5,6 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import {
-  AlertComponent,
   BadgeComponent,
   ButtonDirective,
   CardBodyComponent,
@@ -40,8 +39,6 @@ import { MainFeeWalletService } from '../../../core/services/main-fee-wallet.ser
 import { ToastService } from '../../../shared/services/toast.service';
 import {
   CycleDetailResponseDto,
-  CycleMarketWalletBalanceRowDto,
-  CycleMarketWalletBalancesResponseDto,
   CycleResumeSnapshotResponseDto,
   CycleRetryResponseDto,
   LaunchpadRecommendationDto,
@@ -71,8 +68,9 @@ import {
 import { extractErrorMessage } from '../../../core/utils/error.util';
 import { ApiService } from '../../../core/http/api.service';
 import { CycleAnalysisTabComponent } from './tabs/cycle-analysis-tab/cycle-analysis-tab.component';
+import { CycleMarketBalancesTabComponent } from './tabs/cycle-market-balances-tab/cycle-market-balances-tab.component';
 
-type CycleTab = 'overview' | 'wallets' | 'profit' | 'analysis' | 'ops';
+type CycleTab = 'overview' | 'wallets' | 'market-balances' | 'profit' | 'analysis' | 'ops';
 
 @Component({
   selector: 'app-cycle-detail',
@@ -88,7 +86,6 @@ type CycleTab = 'overview' | 'wallets' | 'profit' | 'analysis' | 'ops';
     RouterLink,
     CycleStatusBadgeComponent,
     SpinnerComponent,
-    AlertComponent,
     TableDirective,
     BadgeComponent,
     DatePipe,
@@ -111,6 +108,7 @@ type CycleTab = 'overview' | 'wallets' | 'profit' | 'analysis' | 'ops';
     TabsContentComponent,
     TabsListComponent,
     CycleAnalysisTabComponent,
+    CycleMarketBalancesTabComponent,
   ],
 })
 export class CycleDetailComponent implements OnInit {
@@ -149,9 +147,6 @@ export class CycleDetailComponent implements OnInit {
   walletNetworkFilter: Network | '' = '';
   walletTypeFilter: WalletType | '' = '';
   walletsLoading = signal(false);
-  marketBalances = signal<CycleMarketWalletBalancesResponseDto | null>(null);
-  marketBalancesLoading = signal(false);
-  marketBalancesSyncing = signal(false);
   selectedWalletIds = signal<Set<string>>(new Set());
   expandedWalletId = signal<string | null>(null);
   expandedWalletBalance = signal<WalletBalanceResponseDto | null>(null);
@@ -217,13 +212,8 @@ export class CycleDetailComponent implements OnInit {
   }
 
   private onTabActivated(tab: CycleTab): void {
-    if (tab === 'wallets') {
-      if (this.walletList().length === 0) {
-        this.loadWallets();
-      }
-      if (this.needsMarketBalancesLoad()) {
-        this.loadMarketBalances();
-      }
+    if (tab === 'wallets' && this.walletList().length === 0) {
+      this.loadWallets();
     }
     if (tab === 'profit' && !this.profitStatus()) {
       this.loadProfit();
@@ -233,11 +223,6 @@ export class CycleDetailComponent implements OnInit {
     }
   }
 
-  private needsMarketBalancesLoad(): boolean {
-    const cached = this.marketBalances();
-    return !cached || cached.cycleId !== this.cycleId();
-  }
-
   private resetCycleScopedState(): void {
     this.walletList.set([]);
     this.walletTotal.set(0);
@@ -245,9 +230,6 @@ export class CycleDetailComponent implements OnInit {
     this.selectedWalletIds.set(new Set());
     this.expandedWalletId.set(null);
     this.expandedWalletBalance.set(null);
-    this.marketBalances.set(null);
-    this.marketBalancesLoading.set(false);
-    this.marketBalancesSyncing.set(false);
     this.profitStatus.set(null);
     this.profitLogs.set([]);
     this.profitLogsTotal.set(0);
@@ -395,50 +377,6 @@ export class CycleDetailComponent implements OnInit {
     });
   }
 
-  loadMarketBalances(): void {
-    const cycleId = this.cycleId();
-    if (!cycleId) {
-      return;
-    }
-    this.marketBalancesLoading.set(true);
-    this.wallets.getCycleMarketBalances(cycleId).subscribe({
-      next: (res) => {
-        this.marketBalances.set(res);
-        this.marketBalancesLoading.set(false);
-      },
-      error: (err) => {
-        this.marketBalancesLoading.set(false);
-        this.toast.error(extractErrorMessage(err));
-      },
-    });
-  }
-
-  syncMarketBalances(): void {
-    const cycleId = this.cycleId();
-    if (!cycleId) {
-      return;
-    }
-    this.marketBalancesSyncing.set(true);
-    this.wallets.syncCycleMarketBalances(cycleId).subscribe({
-      next: (res) => {
-        this.marketBalances.set(res);
-        this.marketBalancesSyncing.set(false);
-        this.loadWallets();
-        if (res.failedSyncCount > 0) {
-          this.toast.warning(
-            `Synced with ${res.failedSyncCount} wallet failure${res.failedSyncCount === 1 ? '' : 's'}`,
-          );
-        } else {
-          this.toast.success('Market balances synced from chain');
-        }
-      },
-      error: (err) => {
-        this.marketBalancesSyncing.set(false);
-        this.toast.error(extractErrorMessage(err));
-      },
-    });
-  }
-
   walletPages(): number {
     return Math.max(1, Math.ceil(this.walletTotal() / this.walletLimit()));
   }
@@ -500,7 +438,6 @@ export class CycleDetailComponent implements OnInit {
         this.toast.success('Wallets generated');
         this.walletPage.set(1);
         this.loadWallets();
-        this.loadMarketBalances();
       },
       error: (err) => {
         this.actionLoading.set(false);
@@ -607,19 +544,6 @@ export class CycleDetailComponent implements OnInit {
     const ps = this.profitStatus();
     if (!ps?.heldPercent || !ps.maxPercent) return 0;
     return Math.min(100, Math.round((ps.heldPercent / ps.maxPercent) * 100));
-  }
-
-  marketBalanceSourceLabel(wallet: CycleMarketWalletBalanceRowDto): string {
-    if (wallet.syncError) {
-      return wallet.syncError;
-    }
-    if (wallet.fromCache === true) {
-      return 'RPC (cached)';
-    }
-    if (wallet.fromCache === false) {
-      return 'RPC';
-    }
-    return 'DB stored';
   }
 
   loadBestLaunchpad(): void {
