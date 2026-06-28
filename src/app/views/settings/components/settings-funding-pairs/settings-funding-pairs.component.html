@@ -1,0 +1,52 @@
+<c-card class="mb-4" [formGroup]="form">
+  <c-card-header class="d-flex justify-content-between align-items-center">
+    <strong>ChangeNOW Funding Pairs</strong>
+    <button cButton color="primary" size="sm" type="button" (click)="addPair()">
+      <svg cIcon name="cilPlus" size="sm" class="me-1"></svg>
+      Add pair
+    </button>
+  </c-card-header>
+  @if (hasFundingPairsPath()) {
+    <c-card-body formGroupName="integrations">
+      <div formGroupName="runtime">
+        <div formGroupName="changeNow">
+          <div class="table-responsive">
+            <table cTable [hover]="true" class="mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th>Pair key</th>
+                  <th>From currency</th>
+                  <th>To currency</th>
+                  <th>From network</th>
+                  <th>To network</th>
+                  <th style="width: 60px"></th>
+                </tr>
+              </thead>
+              <tbody formArrayName="fundingPairs">
+                @for (pair of fundingPairs!.controls; track $index) {
+                  <tr [formGroupName]="$index">
+                    <td><input cFormControl formControlName="pairKey" placeholder="USDC:SOLANA" class="font-monospace small" /></td>
+                    <td><input cFormControl formControlName="fromCurrency" placeholder="usdc" /></td>
+                    <td><input cFormControl formControlName="toCurrency" placeholder="sol" /></td>
+                    <td><input cFormControl formControlName="fromNetwork" placeholder="eth" /></td>
+                    <td><input cFormControl formControlName="toNetwork" placeholder="sol" /></td>
+                    <td>
+                      <button cButton color="danger" variant="ghost" size="sm" type="button" (click)="removePair($index)" [disabled]="fundingPairs!.length <= 1">
+                        <svg cIcon name="cilTrash" size="sm"></svg>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <small class="text-body-secondary d-block mt-2">Pair key format: SOURCE:TARGET (e.g. USDC:SOLANA, ETH:BSC)</small>
+        </div>
+      </div>
+    </c-card-body>
+  } @else {
+    <c-card-body>
+      <p class="text-body-secondary mb-0">No funding pairs configured.</p>
+    </c-card-body>
+  }
+</c-card>

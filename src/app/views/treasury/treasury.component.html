@@ -1,0 +1,596 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h2 class="mb-1">Treasury</h2>
+  </div>
+</div>
+
+@if (loadingWallet()) {
+  <div class="text-center py-3"><c-spinner /></div>
+} @else if (mainFeeWallet(); as w) {
+  <c-row class="g-4 mb-4">
+    <c-col md="6">
+      <c-card class="h-100">
+        <c-card-header><strong>Funding (rearm)</strong></c-card-header>
+        <c-card-body>
+          <dl class="job-meta mb-0">
+            <dt>Funding address</dt>
+            <dd><code class="small">{{ w.fundingAddress }}</code></dd>
+            <dt>USDC / ETH</dt>
+            <dd>{{ w.balanceUsdc }} / {{ w.balanceEth }}</dd>
+            <dt>Funding USD</dt>
+            <dd class="fw-semibold">{{ fundingTotalUsd(w) | currency }}</dd>
+          </dl>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col md="6">
+      <c-card class="h-100">
+        <c-card-header><strong>Withdrawal (profit)</strong></c-card-header>
+        <c-card-body>
+          <dl class="job-meta mb-0">
+            <dt>Solana</dt>
+            <dd><code class="small">{{ withdrawalSolanaAddress(w) }}</code></dd>
+            <dt>BSC</dt>
+            <dd><code class="small">{{ w.nativeWithdrawalBscAddress }}</code></dd>
+            <dt>SOL / BNB</dt>
+            <dd>{{ w.balanceSol }} / {{ w.balanceBnb }}</dd>
+            <dt>Withdrawal USD</dt>
+            <dd class="fw-semibold">{{ w.withdrawalTotalUsd | currency }}</dd>
+          </dl>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+}
+
+
+<c-tabs [activeItemKey]="activeTab()" (activeItemKeyChange)="onTabChange($event)">
+  <ng-template #usdcHealthAlert>
+    @if (activeConvertTo() === 'USDC' && usdcHealthWarnings().length) {
+      <c-alert color="warning" class="small mb-3">
+        @for (warning of usdcHealthWarnings(); track warning) {
+          <div>{{ warning }}</div>
+        }
+        <div class="mt-1"><a routerLink="/settings">Open Settings → Integrations</a></div>
+      </c-alert>
+    }
+  </ng-template>
+
+  <c-tabs-list variant="tabs" class="treasury-tab-nav">
+    <button cTab itemKey="drain" type="button">Drain</button>
+    <button cTab itemKey="rearm" type="button">Rearm</button>
+    <button cTab itemKey="lifecycle" type="button">Lifecycle</button>
+    <button cTab itemKey="consolidate" type="button">Consolidate</button>
+  </c-tabs-list>
+
+  <c-tabs-content>
+    <!-- Lifecycle -->
+    <c-tab-panel itemKey="lifecycle">
+      <c-row class="g-4">
+        <c-col lg="12">
+          @if (lifecycleJobInProgress()) {
+            <c-alert color="warning" class="small mb-3">A lifecycle job is running — wait for terminal status before starting another.</c-alert>
+          }
+          <ng-container *ngTemplateOutlet="usdcHealthAlert" />
+          <c-card class="mb-4">
+            <c-card-header><strong>Scope &amp; Networks</strong></c-card-header>
+            <c-card-body>
+              <c-row>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Scope</label>
+                  <select cSelect [(ngModel)]="scope">
+                    <option value="GLOBAL">GLOBAL</option>
+                    <option value="CYCLE">CYCLE</option>
+                  </select>
+                </c-col>
+                @if (scope === 'CYCLE') {
+                  <c-col md="6" class="mb-3">
+                    <label cLabel>Cycle</label>
+                    @if (cycleOptions().length > 0) {
+                      <select cSelect [(ngModel)]="cycleId">
+                        <option value="" disabled>Select cycle…</option>
+                        @for (cycle of cycleOptions(); track cycle.id) {
+                          <option [value]="cycle.id">{{ cycle.id }} · {{ cycle.status }} · {{ cycle.network }}</option>
+                        }
+                      </select>
+                    }
+                    <input cFormControl class="mt-2" [(ngModel)]="cycleId" placeholder="Or paste cycle UUID" />
+                  </c-col>
+                }
+                <c-col md="12">
+                  <label cLabel>Networks</label>
+                  <div class="network-checks mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="lc-net-sol" [(ngModel)]="networkSol" />
+                      <label class="form-check-label" for="lc-net-sol">SOLANA</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="lc-net-bsc" [(ngModel)]="networkBsc" />
+                      <label class="form-check-label" for="lc-net-bsc">BSC</label>
+                    </div>
+                  </div>
+                </c-col>
+              </c-row>
+            </c-card-body>
+          </c-card>
+
+          <c-card class="mb-4">
+            <c-card-header><strong>1. Drain</strong></c-card-header>
+            <c-card-body>
+              <c-row>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Convert to</label>
+                  <select cSelect [(ngModel)]="drainConvertTo">
+                    <option value="NATIVE">NATIVE@if (settingsDrainConvertDefault() === 'NATIVE') { (settings default)}</option>
+                    <option value="USDC">USDC@if (settingsDrainConvertDefault() === 'USDC') { (settings default)}</option>
+                  </select>
+                  @if (settingsDrainConvertDefault(); as defaultConvert) {
+                    <small class="text-body-secondary d-block mt-1">
+                      Loaded from <code>settings.treasury.lifecycle.defaultDrainConvertTo</code>: {{ defaultConvert }}
+                    </small>
+                  }
+                </c-col>
+                <c-col md="6" class="mb-3 d-flex align-items-end">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="lc-include-owner" [(ngModel)]="drainIncludeOwner" />
+                    <label class="form-check-label" for="lc-include-owner">Include owner wallets</label>
+                  </div>
+                </c-col>
+                <c-col md="12" class="mb-3">
+                  <label cLabel>Reason</label>
+                  <textarea cFormControl rows="2" [(ngModel)]="drainReason" placeholder="Optional operator note"></textarea>
+                </c-col>
+              </c-row>
+            </c-card-body>
+          </c-card>
+
+          <c-card class="mb-4">
+            <c-card-header><strong>2. Wait for deposit</strong></c-card-header>
+            <c-card-body>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="lc-wait-enabled" [(ngModel)]="waitEnabled" />
+                <label class="form-check-label" for="lc-wait-enabled">Enabled</label>
+              </div>
+              <c-row>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Min balance USD</label>
+                  <input cFormControl type="number" min="0" step="0.01" [(ngModel)]="minBalanceUsd" [disabled]="!waitEnabled" />
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Timeout (minutes)</label>
+                  <input cFormControl type="number" min="1" [(ngModel)]="timeoutMinutes" [disabled]="!waitEnabled" />
+                </c-col>
+              </c-row>
+            </c-card-body>
+          </c-card>
+
+          <c-card class="mb-4">
+            <c-card-header><strong>3. Rearm</strong></c-card-header>
+            <c-card-body>
+              <c-row>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Wallet pool strategy</label>
+                  <select cSelect [(ngModel)]="walletPoolStrategy">
+                    <option value="AUTO">AUTO</option>
+                    <option value="FRESH">FRESH</option>
+                    <option value="REUSE">REUSE</option>
+                  </select>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Market wallet count</label>
+                  <input cFormControl type="number" min="1" max="500" [(ngModel)]="marketWalletCount" />
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Source asset</label>
+                  <select cSelect [(ngModel)]="sourceAsset">
+                    <option value="USDC">USDC</option>
+                    <option value="ETH">ETH</option>
+                  </select>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Amount per wallet (USD)</label>
+                  <input cFormControl type="number" min="0" step="0.01" [(ngModel)]="amountPerWalletUsd" />
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="lc-force-reuse" [(ngModel)]="forceReuse" />
+                    <label class="form-check-label" for="lc-force-reuse">Force reuse</label>
+                  </div>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="lc-skip-balance" [(ngModel)]="skipIfBalanceInsufficient" />
+                    <label class="form-check-label" for="lc-skip-balance">Skip if balance insufficient</label>
+                  </div>
+                </c-col>
+              </c-row>
+            </c-card-body>
+          </c-card>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="lc-start-cycle" [(ngModel)]="startCycleAfterRearm" />
+            <label class="form-check-label" for="lc-start-cycle">Start cycle after rearm</label>
+          </div>
+
+          <button cButton color="primary" [disabled]="running() || lifecycleJobInProgress()" (click)="runLifecycle()">
+            @if (running()) { <c-spinner size="sm" /> } @else { Run full lifecycle }
+          </button>
+        </c-col>
+
+        <c-col lg="12">
+          @if (lifecycleJob(); as job) {
+            <ng-container *ngTemplateOutlet="lifecycleJobCard; context: { $implicit: job }" />
+          }
+        </c-col>
+      </c-row>
+    </c-tab-panel>
+
+    <!-- Drain -->
+    <c-tab-panel itemKey="drain">
+      <c-row class="g-4">
+        <c-col lg="12">
+          @if (lifecycleJobInProgress()) {
+            <c-alert color="warning" class="small mb-3">A lifecycle job is running — wait for terminal status before starting another.</c-alert>
+          }
+          <ng-container *ngTemplateOutlet="usdcHealthAlert" />
+          <c-card>
+            <c-card-header><strong>Drain</strong></c-card-header>
+            <c-card-body>
+              <c-row>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Scope</label>
+                  <select cSelect [(ngModel)]="scope">
+                    <option value="GLOBAL">GLOBAL</option>
+                    <option value="CYCLE">CYCLE</option>
+                  </select>
+                </c-col>
+                @if (scope === 'CYCLE') {
+                  <c-col md="6" class="mb-3">
+                    <label cLabel>Cycle</label>
+                    @if (cycleOptions().length > 0) {
+                      <select cSelect [(ngModel)]="cycleId">
+                        <option value="" disabled>Select cycle…</option>
+                        @for (cycle of cycleOptions(); track cycle.id) {
+                          <option [value]="cycle.id">{{ cycle.id }} · {{ cycle.status }} · {{ cycle.network }}</option>
+                        }
+                      </select>
+                    }
+                    <input cFormControl class="mt-2" [(ngModel)]="cycleId" placeholder="Or paste cycle UUID" />
+                  </c-col>
+                }
+                <c-col md="12" class="mb-3">
+                  <label cLabel>Networks</label>
+                  <div class="network-checks mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="dr-net-sol" [(ngModel)]="networkSol" />
+                      <label class="form-check-label" for="dr-net-sol">SOLANA</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="dr-net-bsc" [(ngModel)]="networkBsc" />
+                      <label class="form-check-label" for="dr-net-bsc">BSC</label>
+                    </div>
+                  </div>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Convert to</label>
+                  <select cSelect [(ngModel)]="drainConvertTo">
+                    <option value="NATIVE">NATIVE@if (settingsDrainConvertDefault() === 'NATIVE') { (settings default)}</option>
+                    <option value="USDC">USDC@if (settingsDrainConvertDefault() === 'USDC') { (settings default)}</option>
+                  </select>
+                  @if (settingsDrainConvertDefault(); as defaultConvert) {
+                    <small class="text-body-secondary d-block mt-1">
+                      Loaded from <code>settings.treasury.lifecycle.defaultDrainConvertTo</code>: {{ defaultConvert }}
+                    </small>
+                  }
+                </c-col>
+                <c-col md="6" class="mb-3 d-flex align-items-end">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="dr-include-owner" [(ngModel)]="drainIncludeOwner" />
+                    <label class="form-check-label" for="dr-include-owner">Include owner wallets</label>
+                  </div>
+                </c-col>
+                <c-col md="12" class="mb-3">
+                  <label cLabel>Reason</label>
+                  <textarea cFormControl rows="3" [(ngModel)]="drainReason" placeholder="Optional operator note"></textarea>
+                </c-col>
+              </c-row>
+              <button cButton color="warning" [disabled]="running() || lifecycleJobInProgress()" (click)="drainOnly()">
+                @if (running()) { <c-spinner size="sm" /> } @else { Drain wallets }
+              </button>
+            </c-card-body>
+          </c-card>
+        </c-col>
+        <c-col lg="12">
+          @if (lifecycleJob(); as job) {
+            <ng-container *ngTemplateOutlet="lifecycleJobCard; context: { $implicit: job }" />
+          }
+        </c-col>
+      </c-row>
+    </c-tab-panel>
+
+    <!-- Rearm -->
+    <c-tab-panel itemKey="rearm">
+      <c-row class="g-4">
+        <c-col lg="12">
+          @if (lifecycleJobInProgress()) {
+            <c-alert color="warning" class="small mb-3">A lifecycle job is running — wait for terminal status before starting another.</c-alert>
+          }
+          <c-card>
+            <c-card-header><strong>Rearm</strong></c-card-header>
+            <c-card-body>
+              <c-row>
+                <c-col md="12" class="mb-3">
+                  <label cLabel>Networks</label>
+                  <div class="network-checks mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="re-net-sol" [(ngModel)]="networkSol" />
+                      <label class="form-check-label" for="re-net-sol">SOLANA</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="re-net-bsc" [(ngModel)]="networkBsc" />
+                      <label class="form-check-label" for="re-net-bsc">BSC</label>
+                    </div>
+                  </div>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Wallet pool strategy</label>
+                  <select cSelect [(ngModel)]="walletPoolStrategy">
+                    <option value="AUTO">AUTO</option>
+                    <option value="FRESH">FRESH</option>
+                    <option value="REUSE">REUSE</option>
+                  </select>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Market wallet count</label>
+                  <input cFormControl type="number" min="1" max="500" [(ngModel)]="marketWalletCount" />
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Source asset</label>
+                  <select cSelect [(ngModel)]="sourceAsset">
+                    <option value="USDC">USDC</option>
+                    <option value="ETH">ETH</option>
+                  </select>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Amount per wallet (USD)</label>
+                  <input cFormControl type="number" min="0" step="0.01" [(ngModel)]="amountPerWalletUsd" />
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="re-force-reuse" [(ngModel)]="forceReuse" />
+                    <label class="form-check-label" for="re-force-reuse">Force reuse</label>
+                  </div>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="re-skip-balance" [(ngModel)]="skipIfBalanceInsufficient" />
+                    <label class="form-check-label" for="re-skip-balance">Skip if balance insufficient</label>
+                  </div>
+                </c-col>
+                <c-col md="12" class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="re-start-cycle" [(ngModel)]="startCycleAfterRearm" />
+                    <label class="form-check-label" for="re-start-cycle">Start cycle after rearm</label>
+                  </div>
+                </c-col>
+              </c-row>
+              <button cButton color="success" [disabled]="running() || lifecycleJobInProgress()" (click)="rearmOnly()">
+                @if (running()) { <c-spinner size="sm" /> } @else { Rearm wallet pool }
+              </button>
+            </c-card-body>
+          </c-card>
+        </c-col>
+        <c-col lg="12">
+          @if (lifecycleJob(); as job) {
+            <ng-container *ngTemplateOutlet="lifecycleJobCard; context: { $implicit: job }" />
+          }
+        </c-col>
+      </c-row>
+    </c-tab-panel>
+
+    <!-- Consolidate -->
+    <c-tab-panel itemKey="consolidate">
+      <c-row class="g-4">
+        <c-col lg="12">
+          <ng-container *ngTemplateOutlet="usdcHealthAlert" />
+          <c-card>
+            <c-card-header><strong>Consolidate</strong></c-card-header>
+            <c-card-body>
+              <c-row>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Scope</label>
+                  <select cSelect [(ngModel)]="scope">
+                    <option value="GLOBAL">GLOBAL</option>
+                    <option value="CYCLE">CYCLE</option>
+                  </select>
+                </c-col>
+                @if (scope === 'CYCLE') {
+                  <c-col md="6" class="mb-3">
+                    <label cLabel>Cycle</label>
+                    @if (cycleOptions().length > 0) {
+                      <select cSelect [(ngModel)]="cycleId">
+                        <option value="" disabled>Select cycle…</option>
+                        @for (cycle of cycleOptions(); track cycle.id) {
+                          <option [value]="cycle.id">{{ cycle.id }} · {{ cycle.status }} · {{ cycle.network }}</option>
+                        }
+                      </select>
+                    }
+                    <input cFormControl class="mt-2" [(ngModel)]="cycleId" placeholder="Or paste cycle UUID" />
+                  </c-col>
+                }
+                <c-col md="12" class="mb-3">
+                  <label cLabel>Networks</label>
+                  <div class="network-checks mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="co-net-sol" [(ngModel)]="networkSol" />
+                      <label class="form-check-label" for="co-net-sol">SOLANA</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="co-net-bsc" [(ngModel)]="networkBsc" />
+                      <label class="form-check-label" for="co-net-bsc">BSC</label>
+                    </div>
+                  </div>
+                </c-col>
+
+                <c-col md="12" class="mb-3">
+                  <label cLabel>Destination mode</label>
+                  <select cSelect [(ngModel)]="destinationMode">
+                    <option value="single">Single address (all networks)</option>
+                    <option value="perNetwork">Per-network addresses</option>
+                  </select>
+                </c-col>
+
+                @if (destinationMode === 'single') {
+                  <c-col md="12" class="mb-3">
+                    <label cLabel>Destination address</label>
+                    <input cFormControl [(ngModel)]="destinationSingle" placeholder="7xKX… or 0x…" />
+                  </c-col>
+                } @else {
+                  <c-col md="6" class="mb-3">
+                    <label cLabel>SOLANA destination</label>
+                    <input cFormControl [(ngModel)]="destinationSol" placeholder="7xKX…" />
+                  </c-col>
+                  <c-col md="6" class="mb-3">
+                    <label cLabel>BSC destination</label>
+                    <input cFormControl [(ngModel)]="destinationBsc" placeholder="0x…" />
+                  </c-col>
+                }
+
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Convert to</label>
+                  <select cSelect [(ngModel)]="consolidateConvertTo">
+                    <option value="NATIVE">NATIVE</option>
+                    <option value="USDC">USDC</option>
+                  </select>
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Min sweep USD</label>
+                  <input cFormControl type="number" min="0" step="0.01" [(ngModel)]="minSweepUsd" />
+                </c-col>
+                <c-col md="6" class="mb-3">
+                  <label cLabel>Slippage (bps)</label>
+                  <input cFormControl type="number" min="1" max="10000" [(ngModel)]="slippageBps" />
+                </c-col>
+                <c-col md="6" class="mb-3 d-flex align-items-end gap-3 flex-wrap">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="co-sell-all" [(ngModel)]="sellAllTokens" />
+                    <label class="form-check-label" for="co-sell-all">Sell all tokens</label>
+                  </div>
+                </c-col>
+                <c-col md="12" class="mb-3">
+                  <label cLabel>Reason</label>
+                  <textarea cFormControl rows="2" [(ngModel)]="consolidateReason" placeholder="Optional operator note"></textarea>
+                </c-col>
+              </c-row>
+              <button cButton color="secondary" [disabled]="running()" (click)="runConsolidate()">
+                @if (running()) { <c-spinner size="sm" /> } @else { Start consolidate }
+              </button>
+            </c-card-body>
+          </c-card>
+        </c-col>
+        <c-col lg="12">
+          @if (consolidateJob(); as job) {
+            <ng-container *ngTemplateOutlet="consolidateJobCard; context: { $implicit: job }" />
+          }
+        </c-col>
+      </c-row>
+    </c-tab-panel>
+  </c-tabs-content>
+</c-tabs>
+
+<ng-template #lifecycleJobCard let-job>
+  <c-card>
+    <c-card-header class="d-flex flex-wrap align-items-center gap-2">
+      <strong>Lifecycle job</strong>
+      <c-badge [color]="treasuryPhaseBadgeColor(job.phase)">{{ job.phase }}</c-badge>
+      <c-badge [color]="jobStatusBadgeColor(job.status)">{{ job.status }}</c-badge>
+      <button cButton color="light" size="sm" class="ms-auto" type="button" (click)="refreshLifecycleJob()">Refresh</button>
+    </c-card-header>
+    <c-card-body>
+      <dl class="job-meta mb-0">
+        <dt>Job ID</dt>
+        <dd><code>{{ job.jobId }}</code></dd>
+        @if (job.walletStrategy) {
+          <dt>Wallet strategy</dt>
+          <dd>{{ job.walletStrategy }}</dd>
+        }
+        @if (job.walletsCreated != null || job.walletsReused != null) {
+          <dt>Wallets</dt>
+          <dd>Created {{ job.walletsCreated ?? 0 }} · Reused {{ job.walletsReused ?? 0 }}</dd>
+        }
+        @if (job.mainFeeUsdBefore != null) {
+          <dt>Withdrawal total USD</dt>
+          <dd>{{ job.mainFeeUsdBefore | currency }} → {{ job.mainFeeUsdAfter | currency }}</dd>
+          <dd class="small text-body-secondary mb-0">API fields <code>mainFeeUsdBefore/After</code> — withdrawal wallets, not funding.</dd>
+        }
+        @if (job.createdAt) {
+          <dt>Created</dt>
+          <dd>{{ job.createdAt | date: 'medium' }}</dd>
+        }
+        @if (job.completedAt) {
+          <dt>Completed</dt>
+          <dd>{{ job.completedAt | date: 'medium' }}</dd>
+        }
+        @if (job.errorMessage) {
+          <dt>Error</dt>
+          <dd class="text-danger">{{ job.errorMessage }}</dd>
+        }
+      </dl>
+    </c-card-body>
+  </c-card>
+</ng-template>
+
+<ng-template #consolidateJobCard let-job>
+  <c-card>
+    <c-card-header class="d-flex flex-wrap align-items-center gap-2">
+      <strong>Consolidate job</strong>
+      <c-badge [color]="jobStatusBadgeColor(job.status)">{{ job.status }}</c-badge>
+      <button cButton color="light" size="sm" class="ms-auto" type="button" (click)="refreshConsolidateJob()">Refresh</button>
+    </c-card-header>
+    <c-card-body>
+      <dl class="job-meta">
+        <dt>Job ID</dt>
+        <dd><code>{{ job.jobId }}</code></dd>
+        <dt>Networks</dt>
+        <dd>{{ job.networks.join(', ') }}</dd>
+        <dt>Wallets</dt>
+        <dd>{{ job.walletCount }}</dd>
+        @if (job.destinations) {
+          <dt>Destinations</dt>
+          <dd>
+            @for (entry of job.destinations | keyvalue; track entry.key) {
+              <div><strong>{{ entry.key }}:</strong> <code class="small">{{ entry.value }}</code></div>
+            }
+          </dd>
+        }
+        <dt>Destination confirmed</dt>
+        <dd>{{ job.destinationConfirmed ? 'Yes' : 'No' }}</dd>
+        @if (job.durationSeconds != null) {
+          <dt>Duration</dt>
+          <dd>{{ job.durationSeconds }}s</dd>
+        } @else if (job.estimatedDurationSeconds) {
+          <dt>Est. duration</dt>
+          <dd>~{{ job.estimatedDurationSeconds }}s</dd>
+        }
+      </dl>
+
+      @if (job.progress) {
+        <div class="mb-2 small">
+          Swept {{ job.progress.walletsSwept }} / {{ job.progress.walletsTotal }} wallets
+          · Sold {{ job.progress.tokensSold }} tokens
+          · Skipped {{ job.progress.tokensSkipped }}
+        </div>
+        <c-progress [value]="consolidateProgress()" color="info" class="mb-3" />
+      }
+
+      @if (consolidateTotalsEntries(job).length) {
+        <div class="small">
+          <strong>Totals</strong>
+          @for (entry of consolidateTotalsEntries(job); track entry.key) {
+            <div>{{ entry.key }}: {{ entry.value }}</div>
+          }
+        </div>
+      }
+    </c-card-body>
+  </c-card>
+</ng-template>

@@ -1,0 +1,271 @@
+@if (loading()) {
+  <div class="text-center py-5"><c-spinner /></div>
+} @else if (form) {
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+      <h2 class="mb-1">Settings</h2>
+    </div>
+    @if (original()?.updatedAt) {
+      <small class="text-body-secondary">Last updated {{ original()?.updatedAt | date: 'medium' }}</small>
+    }
+  </div>
+
+  @if (saveBlocker()) {
+    <c-alert color="warning" class="mb-3">
+      {{ saveBlocker() }}
+    </c-alert>
+  }
+
+  <form cForm [formGroup]="form" (ngSubmit)="save()">
+    <c-tabs [activeItemKey]="activeTab()" (activeItemKeyChange)="onTabChange($event)">
+      <c-tabs-list variant="tabs" class="settings-tab-nav mb-4">
+        @for (tab of tabs; track tab.id) {
+          <button cTab [itemKey]="tab.id" type="button">
+            <svg cIcon [name]="tab.icon" size="sm" class="me-1"></svg>
+            {{ tab.label }}
+          </button>
+        }
+      </c-tabs-list>
+
+      <c-tabs-content>
+        <c-tab-panel [itemKey]="'general'">
+      <c-card class="mb-4 border-primary">
+        <c-card-header><strong>System on / off</strong></c-card-header>
+        <c-card-body formGroupName="strategy">
+          <div formGroupName="cycleSchedule">
+            <div class="form-check form-switch">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="automationEnabled"
+                formControlName="automationEnabled"
+                role="switch"
+              />
+              <label class="form-check-label" for="automationEnabled">Automation enabled</label>
+            </div>
+            <small class="text-body-secondary d-block mt-2">
+              Turn off to stop automatic cycle scheduling.
+            </small>
+          </div>
+        </c-card-body>
+      </c-card>
+
+      <c-card class="mb-4">
+        <c-card-header><strong>Cycle, Budget & Safety</strong></c-card-header>
+        <c-card-body>
+          <app-settings-field-grid [form]="form" path="" [fields]="generalFields" />
+
+          <c-row class="mt-2">
+            <c-col md="6">
+              <label cLabel>Network priority</label>
+              <div class="d-flex gap-4 mt-2" formGroupName="networkPriority">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="net-sol" formControlName="SOLANA" />
+                  <label class="form-check-label" for="net-sol">SOLANA</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="net-bsc" formControlName="BSC" />
+                  <label class="form-check-label" for="net-bsc">BSC</label>
+                </div>
+              </div>
+            </c-col>
+          </c-row>
+        </c-card-body>
+      </c-card>
+        </c-tab-panel>
+
+        <c-tab-panel [itemKey]="'strategy'">
+      <c-accordion alwaysOpen>
+        @for (section of strategySections; track section.id) {
+          <c-accordion-item [visible]="$first">
+            <ng-template cTemplateId="accordionHeader">
+              {{ section.title }}
+            </ng-template>
+            <ng-template cTemplateId="accordionBody">
+              <div class="p-3 pt-0">
+                @if (section.description) {
+                  <p class="text-body-secondary small">{{ section.description }}</p>
+                }
+                <app-settings-field-grid [form]="form" [path]="section.path" [fields]="section.fields" />
+              </div>
+            </ng-template>
+          </c-accordion-item>
+        }
+      </c-accordion>
+
+      <app-settings-peak-windows [form]="form" />
+
+      <c-card class="mb-4">
+        <c-card-header><strong>Blocked Hours (UTC)</strong></c-card-header>
+        <c-card-body formGroupName="strategy">
+          <div formGroupName="cycleSchedule">
+            <label cLabel for="blockedHours">Hours to skip (comma-separated, 0–23)</label>
+            <input cFormControl id="blockedHours" formControlName="blockedHoursUtc" />
+            <small class="text-body-secondary">Example: 4, 5, 6, 7, 8, 9, 10</small>
+          </div>
+        </c-card-body>
+      </c-card>
+        </c-tab-panel>
+
+        <c-tab-panel [itemKey]="'integrations'">
+
+      <c-card class="mb-4">
+        <c-card-header><strong>Withdrawal wallets (profit destination)</strong></c-card-header>
+        <c-card-body>
+          <app-settings-field-grid [form]="form" path="integrations" [fields]="integrationWithdrawalFields" />
+        </c-card-body>
+      </c-card>
+
+      <c-card class="mb-4">
+        <c-card-header><strong>Jupiter (Solana USDC convert)</strong></c-card-header>
+        <c-card-body>
+          <app-settings-field-grid [form]="form" path="integrations" [fields]="integrationJupiterFields" />
+        </c-card-body>
+      </c-card>
+
+      <c-card class="mb-4">
+        <c-card-header><strong>API Keys & Secrets</strong></c-card-header>
+        <c-card-body>
+          <app-settings-field-grid [form]="form" path="integrations" [fields]="integrationKeyFields" />
+        </c-card-body>
+      </c-card>
+
+      <c-card class="mb-4">
+        <c-card-header><strong>RPC URLs</strong></c-card-header>
+        <c-card-body>
+          <app-settings-field-grid [form]="form" path="integrations" [fields]="integrationRpcFields" />
+        </c-card-body>
+      </c-card>
+
+      <c-card class="mb-4">
+        <c-card-header><strong>Service Endpoints</strong></c-card-header>
+        <c-card-body>
+          <app-settings-field-grid [form]="form" path="integrations.endpoints" [fields]="integrationEndpointFields" />
+        </c-card-body>
+      </c-card>
+
+      <c-accordion alwaysOpen>
+        @for (section of runtimeSections; track section.id) {
+          <c-accordion-item>
+            <ng-template cTemplateId="accordionHeader">
+              {{ section.title }}
+            </ng-template>
+            <ng-template cTemplateId="accordionBody">
+              <div class="p-3 pt-0">
+                <app-settings-field-grid [form]="form" [path]="section.path" [fields]="section.fields" />
+              </div>
+            </ng-template>
+          </c-accordion-item>
+        }
+      </c-accordion>
+
+      <app-settings-funding-pairs [form]="form" />
+        </c-tab-panel>
+
+        <c-tab-panel [itemKey]="'treasury'">
+      <c-accordion alwaysOpen>
+        @for (section of treasurySections; track section.id) {
+          <c-accordion-item [visible]="$first">
+            <ng-template cTemplateId="accordionHeader">
+              {{ section.title }}
+            </ng-template>
+            <ng-template cTemplateId="accordionBody">
+              <div class="p-3 pt-0">
+                <app-settings-field-grid [form]="form" [path]="section.path" [fields]="section.fields" />
+
+                @if (section.id === 'treasury-lifecycle-autoDrain') {
+                  <div class="mt-3" formGroupName="treasury">
+                    <div formGroupName="lifecycle">
+                      <div formGroupName="autoDrain">
+                        <c-row>
+                          <c-col md="6">
+                            <label cLabel>Auto-drain networks</label>
+                            <div class="d-flex gap-4 mt-2" formGroupName="networks">
+                              <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="drain-sol" formControlName="SOLANA" />
+                                <label class="form-check-label" for="drain-sol">SOLANA</label>
+                              </div>
+                              <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="drain-bsc" formControlName="BSC" />
+                                <label class="form-check-label" for="drain-bsc">BSC</label>
+                              </div>
+                            </div>
+                          </c-col>
+                        </c-row>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                @if (section.id === 'treasury-consolidate') {
+                  <div class="mt-3" formGroupName="treasury">
+                    <div formGroupName="consolidate">
+                      <label cLabel>Allowed destination addresses (one per line)</label>
+                      <textarea cFormControl rows="3" formControlName="allowedDestinationAddresses"></textarea>
+                    </div>
+                  </div>
+                }
+              </div>
+            </ng-template>
+          </c-accordion-item>
+        }
+      </c-accordion>
+        </c-tab-panel>
+
+        <c-tab-panel [itemKey]="'notifications'">
+      <c-row class="g-4">
+        <c-col lg="6">
+          <c-card>
+            <c-card-header><strong>Telegram Alerts</strong></c-card-header>
+            <c-card-body formGroupName="telegram">
+              <div class="mb-3">
+                <label cLabel>Bot token</label>
+                <input cFormControl type="text" formControlName="botToken" autocomplete="off" class="font-monospace" />
+              </div>
+              <div class="mb-3">
+                <label cLabel>Chat IDs (one per line)</label>
+                <textarea cFormControl rows="4" formControlName="chatIds" placeholder="-1001234567890"></textarea>
+              </div>
+              <button cButton color="secondary" type="button" [disabled]="testingTelegram()" (click)="testTelegram()">
+                @if (testingTelegram()) { <c-spinner size="sm" class="me-1" /> } Test Telegram
+              </button>
+            </c-card-body>
+          </c-card>
+        </c-col>
+
+        <c-col lg="6">
+          <c-card>
+            <c-card-header><strong>HTTP Proxy</strong></c-card-header>
+            <c-card-body formGroupName="proxy">
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="proxyEnabled" formControlName="enabled" />
+                <label class="form-check-label" for="proxyEnabled">Enabled</label>
+              </div>
+              <div class="mb-3">
+                <label cLabel>Proxy URL</label>
+                <input cFormControl formControlName="url" placeholder="socks5://USER:PASS@host:45271" />
+              </div>
+              <button cButton color="secondary" type="button" [disabled]="testingProxy()" (click)="testProxy()">
+                @if (testingProxy()) { <c-spinner size="sm" class="me-1" /> } Test Proxy
+              </button>
+            </c-card-body>
+          </c-card>
+        </c-col>
+      </c-row>
+        </c-tab-panel>
+      </c-tabs-content>
+    </c-tabs>
+
+    <div class="sticky-save d-flex gap-2 align-items-center mt-4">
+      @if (form.dirty) {
+        <span class="badge bg-warning text-dark">Unsaved changes</span>
+      }
+      <button cButton color="primary" type="submit" [disabled]="saving() || !form.dirty || !!saveBlocker()">
+        @if (saving()) { <c-spinner size="sm" class="me-1" /> } Save all settings
+      </button>
+      <button cButton color="secondary" variant="outline" type="button" (click)="load()" [disabled]="saving()">
+        Reset form
+      </button>
+    </div>
+  </form>
+}

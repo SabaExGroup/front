@@ -1,0 +1,77 @@
+<div class="bg-light dark:bg-transparent min-vh-100 d-flex flex-row align-items-center">
+  <c-container breakpoint="md">
+    <c-row class="justify-content-center">
+      <c-col lg="8" xl="6">
+        <c-card class="p-4 shadow-sm">
+          <c-card-body>
+            <h1 class="mb-3">Token Panel</h1>
+
+            @if (errorMessage()) {
+              <c-alert color="danger" class="mb-3">{{ errorMessage() }}</c-alert>
+            }
+
+            @if (restoringSession()) {
+              <div class="text-center py-4">
+                <c-spinner class="mb-3" />
+                <p class="text-body-secondary mb-0">Restoring session…</p>
+              </div>
+            } @else if (walletPreview(); as w) {
+              <c-alert color="success" class="mb-3">API key validated via GET /main-fee-wallet</c-alert>
+
+              <c-row class="g-3 mb-3">
+                <c-col sm="6">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Funding (rearm)</div>
+                    <div class="fs-4 fw-semibold">{{ fundingTotalUsd(w) | currency }}</div>
+                    <div class="small text-body-secondary mt-1">USDC + ETH on Ethereum</div>
+                  </div>
+                </c-col>
+                <c-col sm="6">
+                  <div class="border rounded p-3 h-100">
+                    <div class="text-body-secondary small">Withdrawal (profit)</div>
+                    <div class="fs-4 fw-semibold">{{ w.withdrawalTotalUsd | currency }}</div>
+                    <div class="small text-body-secondary mt-1">SOL + BNB on withdrawal wallets</div>
+                  </div>
+                </c-col>
+              </c-row>
+
+              <button cButton color="primary" type="button" class="w-100" (click)="enterDashboard()">
+                Enter dashboard
+              </button>
+            } @else {
+              <form cForm (ngSubmit)="connect()">
+                <div class="mb-4">
+                  <label cLabel for="apiKey">API Key</label>
+                  <c-input-group>
+                    <span cInputGroupText>
+                      <svg cIcon name="cilLockLocked"></svg>
+                    </span>
+                    <input
+                      id="apiKey"
+                      name="apiKey"
+                      cFormControl
+                      [(ngModel)]="apiKey"
+                      type="password"
+                      placeholder="Paste API_KEY from server .env"
+                      autocomplete="off"
+                      required
+                    />
+                  </c-input-group>
+                </div>
+
+                <button cButton color="primary" type="submit" [disabled]="loading()" class="w-100">
+                  @if (loading()) {
+                    <c-spinner size="sm" class="me-2" />
+                    Validating…
+                  } @else {
+                    Connect
+                  }
+                </button>
+              </form>
+            }
+          </c-card-body>
+        </c-card>
+      </c-col>
+    </c-row>
+  </c-container>
+</div>

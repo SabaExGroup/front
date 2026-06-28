@@ -1,0 +1,18 @@
+.sticky-save {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--cui-body-bg);
+  border-top: 1px solid var(--cui-border-color);
+  margin: 0 -1rem;
+  padding: 1rem;
+}
+
+.settings-tab-nav {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  background: var(--cui-body-bg);
+  padding-top: 0.25rem;
+  border-bottom: 1px solid var(--cui-border-color);
+}

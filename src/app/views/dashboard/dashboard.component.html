@@ -1,0 +1,386 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h2 class="mb-1">Dashboard</h2>
+  </div>
+  <button cButton color="light" size="sm" type="button" [disabled]="refreshing()" (click)="refreshAll()">
+    @if (refreshing()) { <c-spinner size="sm" /> } @else { Refresh all }
+  </button>
+</div>
+
+@if (loading()) {
+  <div class="text-center py-5">
+    <c-spinner />
+    <p class="mt-2 text-body-secondary">Loading dashboard…</p>
+  </div>
+} @else {
+  <!-- KPI row -->
+  <c-row class="g-4 mb-4">
+    <c-col sm="6" xl="3">
+      <c-card class="h-100">
+        <c-card-body>
+          <div class="stat-value">{{ mainFeeWallet() ? (fundingTotalUsd(mainFeeWallet()!) | currency) : '—' }}</div>
+          <div class="text-body-secondary small">Funding (rearm)</div>
+          <div class="mt-2 small text-body-secondary">USDC + ETH on Ethereum</div>
+          <div class="mt-2 d-flex flex-wrap gap-1">
+            @if (mainFeeWallet()?.isLowBalance) {
+              <c-badge color="warning">Low balance</c-badge>
+            }
+            @if (mainFeeWallet()?.isReadyForRearm) {
+              <c-badge color="success">Ready for rearm</c-badge>
+            }
+          </div>
+          @if (mainFeeWallet()?.balancesRefreshedAt) {
+            <div class="poll-hint text-body-secondary mt-2">
+              Updated {{ mainFeeWallet()?.balancesRefreshedAt | date: 'short' }}
+            </div>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <c-col sm="6" xl="3">
+      <c-card class="h-100">
+        <c-card-body>
+          <div class="stat-value">{{ mainFeeWallet()?.withdrawalTotalUsd | currency }}</div>
+          <div class="text-body-secondary small">Withdrawal (profit)</div>
+          <div class="mt-2 small text-body-secondary">SOL + BNB on withdrawal wallets</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <c-col sm="6" xl="3">
+      <c-card class="h-100">
+        <c-card-body>
+          <div class="stat-value">
+            <c-badge [color]="dependencyColor(healthData()?.status ?? '')">{{ healthData()?.status | uppercase }}</c-badge>
+          </div>
+          <div class="text-body-secondary small">Health</div>
+          <div class="mt-2 small">Role: {{ healthData()?.processRole }}</div>
+          @if (healthData()?.checkedAt) {
+            <div class="poll-hint text-body-secondary mt-1">{{ healthData()?.checkedAt | date: 'short' }}</div>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <c-col sm="6" xl="3">
+      <c-card class="h-100">
+        <c-card-body class="d-flex flex-column">
+          <button
+            cButton
+            color="primary"
+            class="mb-2"
+            [disabled]="startingCycle() || isHalted()?.halted"
+            (click)="toggleStartForm()"
+          >
+            @if (startingCycle()) { <c-spinner size="sm" class="me-1" /> }
+            {{ showStartForm() ? 'Hide start form' : 'Start cycle' }}
+          </button>
+          <a cButton color="light" variant="outline" routerLink="/cycles" class="mb-2">All cycles</a>
+          <div class="d-flex gap-2">
+            <button cButton color="danger" variant="outline" size="sm" type="button" (click)="navigateWithConfirm('/emergency', 'Emergency')">Emergency</button>
+            <button cButton color="warning" variant="outline" size="sm" type="button" (click)="navigateWithConfirm('/treasury', 'Treasury')">Treasury</button>
+          </div>
+          @if (isHalted()?.halted) {
+            <small class="text-danger mt-2">Start disabled while halted</small>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  @if (showStartForm()) {
+    <c-card class="mb-4">
+      <c-card-header><strong>Start cycle</strong></c-card-header>
+      <c-card-body>
+        <c-row>
+          <c-col md="3" class="mb-3">
+            <label cLabel>Network</label>
+            <select cSelect [(ngModel)]="startNetwork">
+              <option value="">Auto (from settings)</option>
+              @for (n of networkOptions; track n) { <option [value]="n">{{ n }}</option> }
+            </select>
+          </c-col>
+          <c-col md="3" class="mb-3">
+            <label cLabel>Force launchpad</label>
+            <select cSelect [(ngModel)]="startLaunchpad">
+              <option value="">Auto</option>
+              @for (lp of launchpadOptions; track lp) { <option [value]="lp">{{ lp }}</option> }
+            </select>
+          </c-col>
+          <c-col md="6" class="mb-3 d-flex align-items-end gap-3 flex-wrap">
+            <c-form-check>
+              <input cFormCheckInput type="checkbox" id="dash-dry-run" [(ngModel)]="startDryRun" />
+              <label cFormCheckLabel for="dash-dry-run">Dry run</label>
+            </c-form-check>
+            <c-form-check>
+              <input cFormCheckInput type="checkbox" id="dash-ignore-peak" [(ngModel)]="startIgnorePeakSchedule" />
+              <label cFormCheckLabel for="dash-ignore-peak">Ignore peak schedule</label>
+            </c-form-check>
+          </c-col>
+        </c-row>
+        <button cButton color="primary" [disabled]="startingCycle() || isHalted()?.halted" (click)="startCycle()">
+          @if (startingCycle()) { <c-spinner size="sm" /> } @else { Confirm start }
+        </button>
+      </c-card-body>
+    </c-card>
+  }
+
+  <c-row class="g-4 mb-4">
+    <!-- System dependencies -->
+    <c-col lg="12">
+      <c-card class="h-100">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>Health</strong>
+          <span class="poll-hint text-body-secondary">poll 30s</span>
+        </c-card-header>
+        <c-card-body>
+          <table cTable small hover responsive>
+            <thead>
+              <tr><th>Dependency</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Overall</td>
+                <td><c-badge [color]="dependencyColor(healthData()?.status ?? '')">{{ healthData()?.status }}</c-badge></td>
+              </tr>
+              <tr>
+                <td>PostgreSQL</td>
+                <td><c-badge [color]="dependencyColor(healthData()?.postgres ?? '')">{{ healthData()?.postgres }}</c-badge></td>
+              </tr>
+              <tr>
+                <td>Redis</td>
+                <td><c-badge [color]="dependencyColor(healthData()?.redis ?? '')">{{ healthData()?.redis }}</c-badge></td>
+              </tr>
+              <tr>
+                <td>BullMQ</td>
+                <td><c-badge [color]="dependencyColor(healthData()?.bullmq ?? '')">{{ healthData()?.bullmq }}</c-badge></td>
+              </tr>
+              <tr>
+                <td>Object storage</td>
+                <td><c-badge [color]="dependencyColor(healthData()?.objectStorage ?? '')">{{ healthData()?.objectStorage }}</c-badge></td>
+              </tr>
+              <tr>
+                <td>Process role</td>
+                <td>{{ healthData()?.processRole }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <!-- Integration providers -->
+    <c-col lg="12">
+      <c-card class="h-100">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>Integrations</strong>
+          <span class="poll-hint text-body-secondary">poll 60s</span>
+        </c-card-header>
+        <c-card-body>
+          @if (loadingSlow() && !integrationsHealth()) {
+            <div class="text-center py-3"><c-spinner size="sm" /></div>
+          } @else if (integrationsHealth(); as int) {
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <c-badge [color]="dependencyColor(int.status)">{{ int.status }}</c-badge>
+              <c-badge [color]="int.configValid ? 'success' : 'danger'">
+                Config {{ int.configValid ? 'valid' : 'invalid' }}
+              </c-badge>
+              @if (int.checkedAt) {
+                <span class="poll-hint text-body-secondary align-self-center">{{ int.checkedAt | date: 'short' }}</span>
+              }
+            </div>
+            @if (int.configError) {
+              <c-alert color="warning" class="small py-2">{{ int.configError }}</c-alert>
+            }
+            @if (providerEntries().length) {
+              <table cTable small hover responsive>
+                <thead>
+                  <tr><th>Provider</th><th>Status</th><th>Latency</th><th>Message</th></tr>
+                </thead>
+                <tbody>
+                  @for (entry of providerEntries(); track entry.key) {
+                    <tr>
+                      <td>{{ entry.key }}</td>
+                      <td><c-badge [color]="dependencyColor(entry.value.status)">{{ entry.value.status }}</c-badge></td>
+                      <td>{{ entry.value.latencyMs ?? '—' }} ms</td>
+                      <td class="small">{{ entry.value.message ?? '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <c-row class="g-4 mb-4">
+    <!-- RPC health -->
+    <c-col lg="12">
+      <c-card class="h-100">
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>RPC</strong>
+          <span class="poll-hint text-body-secondary">poll 60s</span>
+        </c-card-header>
+        <c-card-body>
+          @if (loadingSlow() && !rpcHealth()) {
+            <div class="text-center py-3"><c-spinner size="sm" /></div>
+          } @else if (rpcHealth(); as rpc) {
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <c-badge [color]="dependencyColor(rpc.status)">{{ rpc.status }}</c-badge>
+              @if (rpc.checkedAt) {
+                <span class="poll-hint text-body-secondary">{{ rpc.checkedAt | date: 'short' }}</span>
+              }
+            </div>
+            <c-row class="g-3">
+              @for (item of rpcChains(); track item.name) {
+                <c-col md="4">
+                  <div class="border rounded p-3 h-100">
+                    <h6 class="mb-2">{{ item.name }}</h6>
+                    <c-badge [color]="dependencyColor(item.chain.status)">{{ item.chain.status }}</c-badge>
+                    <dl class="meta-list mt-2 mb-0">
+                      @if (item.chain.provider) {
+                        <dt>Provider</dt><dd>{{ item.chain.provider }}</dd>
+                      }
+                      @if (item.chain.latencyMs != null) {
+                        <dt>Latency</dt><dd>{{ item.chain.latencyMs }} ms</dd>
+                      }
+                      @if (item.chain.endpointHost) {
+                        <dt>Endpoint</dt><dd class="small text-break">{{ item.chain.endpointHost }}</dd>
+                      }
+                      @if (item.chain.slot != null) {
+                        <dt>Slot</dt><dd>{{ item.chain.slot }}</dd>
+                      }
+                      @if (item.chain.blockNumber != null) {
+                        <dt>Block</dt><dd>{{ item.chain.blockNumber }}</dd>
+                      }
+                      @if (item.chain.chainId != null) {
+                        <dt>Chain ID</dt><dd>{{ item.chain.chainId }}</dd>
+                      }
+                      @if (item.chain.version) {
+                        <dt>Version</dt><dd>{{ item.chain.version }}</dd>
+                      }
+                      @if (item.chain.message) {
+                        <dt>Message</dt><dd class="text-danger small">{{ item.chain.message }}</dd>
+                      }
+                    </dl>
+                  </div>
+                </c-col>
+              }
+            </c-row>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+  </c-row>
+
+  <c-row class="g-4 mb-4">
+    <c-col lg="12">
+      <c-card>
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>Native prices</strong>
+          <button cButton color="light" size="sm" type="button" [disabled]="refreshingPrices()" (click)="refreshPrices()">
+            @if (refreshingPrices()) { <c-spinner size="sm" /> } @else { Refresh }
+          </button>
+        </c-card-header>
+        <c-card-body>
+          @if (loadingSlow() && !nativePrices()) {
+            <div class="text-center py-3"><c-spinner size="sm" /></div>
+          } @else if (nativePrices(); as prices) {
+            <dl class="meta-list mb-0">
+              <dt>SOL</dt><dd>{{ prices.solUsd | number: '1.2-2' }} USD</dd>
+              <dt>BNB</dt><dd>{{ prices.bnbUsd | number: '1.2-2' }} USD</dd>
+              @if (prices.cached) {
+                <dt>Cache</dt><dd><c-badge color="secondary">Cached</c-badge></dd>
+              }
+              @if (prices.fetchedAt) {
+                <dt>Fetched</dt><dd>{{ prices.fetchedAt | date: 'short' }}</dd>
+              }
+            </dl>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <c-row class="g-4 mb-4">
+    <!-- Wallet roles -->
+    <c-col lg="12">
+      <c-card>
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>Wallets</strong>
+          <span class="poll-hint text-body-secondary">poll 30s</span>
+        </c-card-header>
+        <c-card-body>
+          @if (mainFeeWallet(); as w) {
+            <c-row>
+              <c-col lg="6" class="mb-3">
+                <h6>Funding (rearm)</h6>
+                <dl class="meta-list mb-0">
+                  <dt>Funding address</dt><dd><code class="small">{{ w.fundingAddress }}</code></dd>
+                  <dt>USDC</dt><dd>{{ w.balanceUsdc }}</dd>
+                  <dt>ETH</dt><dd>{{ w.balanceEth }}</dd>
+                  <dt>Funding USD</dt><dd class="fw-semibold">{{ fundingTotalUsd(w) | currency }}</dd>
+                  <dt>Min rearm</dt><dd>{{ w.minRearmBalanceUsd | currency }}</dd>
+                </dl>
+              </c-col>
+              <c-col lg="6" class="mb-3">
+                <h6>Withdrawal (profit)</h6>
+                <dl class="meta-list mb-0">
+                  <dt>Solana withdrawal</dt><dd><code class="small">{{ withdrawalSolanaAddress(w) }}</code></dd>
+                  <dt>BSC withdrawal</dt><dd><code class="small">{{ w.nativeWithdrawalBscAddress }}</code></dd>
+                  <dt>SOL</dt><dd>{{ w.balanceSol }}</dd>
+                  <dt>BNB</dt><dd>{{ w.balanceBnb }}</dd>
+                  <dt>Withdrawal USD</dt><dd class="fw-semibold">{{ w.withdrawalTotalUsd | currency }}</dd>
+                </dl>
+              </c-col>
+            </c-row>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <c-row class="g-4">
+    <c-col lg="12">
+      <c-card>
+        <c-card-header class="d-flex justify-content-between align-items-center">
+          <strong>Recent cycles</strong>
+          <a cButton color="primary" size="sm" variant="ghost" routerLink="/cycles">View all ({{ recentCyclesTotal() }})</a>
+        </c-card-header>
+        <c-card-body>
+          @if (recentCycles().length === 0) {
+            <p class="text-body-secondary mb-0">No cycles yet.</p>
+          } @else {
+            <table cTable hover responsive>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Status</th>
+                  <th>Network</th>
+                  <th>Launchpad</th>
+                  <th>Started</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (cycle of recentCycles(); track cycle.id) {
+                  <tr class="table-row-link" [routerLink]="['/cycles', cycle.id]">
+                    <td><code class="small">{{ cycle.id }}</code></td>
+                    <td><app-cycle-status-badge [status]="cycle.status" /></td>
+                    <td>{{ cycle.network }}</td>
+                    <td>{{ cycle.launchpad ?? '—' }}</td>
+                    <td>{{ cycle.startedAt | date: 'medium' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+}

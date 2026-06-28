@@ -1,0 +1,19 @@
+.job-meta {
+  font-size: 0.875rem;
+}
+
+.job-meta dt {
+  color: var(--cui-secondary-color);
+  font-weight: 500;
+  margin-bottom: 0.125rem;
+}
+
+.job-meta dd {
+  margin-bottom: 0.75rem;
+}
+
+.halt-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

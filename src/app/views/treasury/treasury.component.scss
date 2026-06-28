@@ -1,0 +1,22 @@
+.treasury-tab-nav {
+  margin-bottom: 1rem;
+}
+
+.network-checks {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.job-meta {
+  font-size: 0.875rem;
+}
+
+.job-meta dt {
+  color: var(--cui-secondary-color);
+  font-weight: 500;
+  margin-bottom: 0.125rem;
+}
+
+.job-meta dd {
+  margin-bottom: 0.75rem;
+}

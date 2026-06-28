@@ -1,0 +1,105 @@
+<ng-container>
+  <c-container [fluid]="true" class="border-bottom px-4 d-flex align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <button
+        [cSidebarToggle]="sidebarId()"
+        cHeaderToggler
+        class="btn"
+        toggle="visible"
+        style="margin-inline-start: -14px;"
+        aria-label="Toggle sidebar navigation"
+      >
+        <svg cIcon name="cilMenu" size="lg"></svg>
+      </button>
+
+      <a routerLink="/dashboard" class="header-brand d-none d-sm-inline">
+        Token Platform
+      </a>
+    </div>
+
+    <c-header-nav class="d-none d-md-flex ms-md-2">
+      @for (item of headerNavItems; track item.url) {
+        <c-nav-item>
+          <a
+            cNavLink
+            class="header-nav-link"
+            [routerLink]="item.url"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: isExactNav(item) }"
+          >
+            {{ item.name }}
+            @if (item.badge) {
+              <c-badge [color]="item.badge.color" class="ms-1">{{ item.badge.text }}</c-badge>
+            }
+          </a>
+        </c-nav-item>
+      }
+    </c-header-nav>
+
+    <c-header-nav class="ms-auto d-flex align-items-center">
+      @if (apiConnected()) {
+        <c-nav-item class="d-none d-lg-flex">
+          <span class="nav-link py-1 text-body-secondary small">
+            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">API connected</span>
+          </span>
+        </c-nav-item>
+      }
+      <div class="nav-item py-1 d-none d-md-block">
+        <div class="vr h-100 mx-2 text-body text-opacity-75"></div>
+      </div>
+      <ng-container *ngTemplateOutlet="themeDropdown" />
+      <div class="nav-item py-1">
+        <div class="vr h-100 mx-2 text-body text-opacity-75"></div>
+      </div>
+      <ng-container *ngTemplateOutlet="userDropdown" />
+    </c-header-nav>
+  </c-container>
+
+  <c-container [fluid]="true" class="px-4 py-2 header-breadcrumb-row">
+    <c-breadcrumb-router />
+  </c-container>
+</ng-container>
+
+<ng-template #userDropdown>
+  <c-dropdown [popperOptions]="{ placement: 'bottom-start' }" variant="nav-item">
+    <button [caret]="false" cDropdownToggle class="py-0 px-2" aria-label="Open user menu">
+      <svg cIcon name="cilUser" size="lg"></svg>
+    </button>
+    <ul cDropdownMenu class="pt-0 w-auto">
+      <li>
+        <a cDropdownItem routerLink="/settings">
+          <svg cIcon class="me-2" name="cilSettings"></svg>
+          Settings
+        </a>
+      </li>
+      <li><hr cDropdownDivider /></li>
+      <li>
+        <button cDropdownItem type="button" (click)="logout()">
+          <svg cIcon class="me-2" name="cilAccountLogout"></svg>
+          Disconnect
+        </button>
+      </li>
+    </ul>
+  </c-dropdown>
+</ng-template>
+
+<ng-template #themeDropdown>
+  <c-dropdown alignment="end" variant="nav-item">
+    <button [caret]="false" cDropdownToggle aria-label="Open theme picker">
+      <svg cIcon [name]="icons()" size="lg"></svg>
+    </button>
+    <div cDropdownMenu>
+      @for (mode of colorModes; track mode.name) {
+        <button
+          (click)="colorMode.set(mode.name)"
+          [active]="colorMode()===mode.name"
+          cDropdownItem
+          class="d-flex align-items-center"
+        >
+          <svg cIcon class="me-2" [name]="mode.icon" size="lg"></svg>
+          {{ mode.text }}
+        </button>
+      }
+    </div>
+  </c-dropdown>
+</ng-template>

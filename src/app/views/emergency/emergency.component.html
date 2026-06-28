@@ -1,0 +1,391 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h2 class="mb-1">Emergency</h2>
+  </div>
+  <button cButton color="light" size="sm" type="button" [disabled]="refreshingHalt()" (click)="refreshHalt()">
+    @if (refreshingHalt()) { <c-spinner size="sm" /> } @else { Refresh halt status }
+  </button>
+</div>
+
+<c-row class="g-4">
+  <c-col lg="12">
+    @if (mainFeeWallet(); as w) {
+      <c-card class="mb-4">
+        <c-card-header><strong>Withdrawal destinations</strong></c-card-header>
+        <c-card-body>
+          <p class="small text-body-secondary mb-2">
+            Brake sweeps to these addresses — never to the funding wallet (<code>{{ w.fundingAddress }}</code>).
+          </p>
+          <dl class="job-meta mb-0">
+            <dt>Solana</dt>
+            <dd><code>{{ withdrawalSolanaAddress(w) }}</code> · {{ w.balanceSol }} SOL</dd>
+            <dt>BSC</dt>
+            <dd><code>{{ w.nativeWithdrawalBscAddress }}</code> · {{ w.balanceBnb }} BNB</dd>
+            <dt>Withdrawal USD (approx)</dt>
+            <dd>{{ w.withdrawalTotalUsd | currency }}</dd>
+          </dl>
+        </c-card-body>
+      </c-card>
+    }
+    <c-card>
+      <c-card-header class="d-flex flex-wrap align-items-center gap-2">
+        <strong>System halt status</strong>
+        @if (halt()?.halted) {
+          <c-badge color="danger">HALTED</c-badge>
+        } @else {
+          <c-badge color="success">RUNNING</c-badge>
+        }
+      </c-card-header>
+      <c-card-body>
+        @if (halt()?.halted) {
+          <c-alert color="danger" class="mb-3">
+            <strong>System is halted</strong>
+            @if (halt()?.halt?.reason) {
+              — {{ halt()?.halt?.reason }}
+            }
+          </c-alert>
+          <dl class="job-meta mb-0">
+            @if (halt()?.halt?.since) {
+              <dt>Halted since</dt>
+              <dd>{{ halt()?.halt?.since | date: 'medium' }}</dd>
+            }
+            @if (halt()?.halt?.jobId) {
+              <dt>Halt job ID</dt>
+              <dd><code>{{ halt()?.halt?.jobId }}</code></dd>
+            }
+            @if (halt()?.emergencyLock) {
+              <dt>Emergency lock (brake job ID)</dt>
+              <dd><code>{{ halt()?.emergencyLock }}</code></dd>
+            }
+          </dl>
+        } @else {
+          <c-alert color="success" class="mb-0">
+            System is running — no active halt. Start cycle and normal operations are allowed.
+          </c-alert>
+        }
+      </c-card-body>
+    </c-card>
+  </c-col>
+
+  <c-col lg="6">
+    <c-card>
+      <c-card-header><strong>Brake</strong></c-card-header>
+      <c-card-body>
+        <div class="mb-3">
+          <label cLabel>Scope</label>
+          <select cSelect [(ngModel)]="scope">
+            <option value="GLOBAL">GLOBAL</option>
+            <option value="CYCLE">CYCLE</option>
+          </select>
+        </div>
+
+        @if (scope === 'CYCLE') {
+          <div class="mb-3">
+            <label cLabel>Cycle</label>
+            @if (cycleOptions().length > 0) {
+              <select cSelect [(ngModel)]="cycleId">
+                <option value="" disabled>Select cycle…</option>
+                @for (cycle of cycleOptions(); track cycle.id) {
+                  <option [value]="cycle.id">{{ cycle.id }} · {{ cycle.status }} · {{ cycle.network }}</option>
+                }
+              </select>
+            }
+            <input cFormControl class="mt-2" [(ngModel)]="cycleId" placeholder="Or paste cycle UUID" />
+          </div>
+        }
+
+        <div class="mb-3">
+          <label cLabel>Sell mode</label>
+          <select cSelect [(ngModel)]="sellMode">
+            <option value="TWAP">TWAP (staggered — uses Strategy → Emergency Brake tuning)</option>
+            <option value="DUMP">DUMP (instant parallel sell-off)</option>
+          </select>
+        </div>
+
+        @if (convertTo === 'USDC' && usdcHealthWarnings().length) {
+          <c-alert color="warning" class="small mb-3">
+            @for (warning of usdcHealthWarnings(); track warning) {
+              <div>{{ warning }}</div>
+            }
+            <div class="mt-1">
+              <a routerLink="/settings">Open Settings → Integrations</a>
+            </div>
+          </c-alert>
+        }
+
+        <div class="mb-3">
+          <label cLabel>Convert to</label>
+          <div class="d-flex gap-4 mt-1">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="convertTo" id="convert-native" value="NATIVE" [(ngModel)]="convertTo" />
+              <label class="form-check-label" for="convert-native">NATIVE (default)</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="convertTo" id="convert-usdc" value="USDC" [(ngModel)]="convertTo" />
+              <label class="form-check-label" for="convert-usdc">USDC (Jupiter / ChangeNOW)</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" [(ngModel)]="fullDrain" id="fullDrain" />
+          <label class="form-check-label" for="fullDrain">
+            Full drain
+            @if (scope === 'GLOBAL') {
+              <span class="text-danger">(GLOBAL → system-wide drain job)</span>
+            }
+          </label>
+        </div>
+
+        <div class="mb-3">
+          <label cLabel>Reason (required)</label>
+          <textarea
+            cFormControl
+            rows="3"
+            [(ngModel)]="reason"
+            required
+            placeholder="operator panic — explain why"
+          ></textarea>
+        </div>
+
+        @if (brakeInProgress()) {
+          <c-alert color="warning" class="small mb-3">
+            A brake job is in progress. Wait for it to finish before triggering another.
+          </c-alert>
+        }
+
+        <button
+          cButton
+          color="danger"
+          [disabled]="braking() || brakeInProgress() || !brakeFormValid()"
+          (click)="triggerBrake()"
+        >
+          @if (braking()) { <c-spinner size="sm" /> } @else { Trigger emergency brake }
+        </button>
+      </c-card-body>
+    </c-card>
+  </c-col>
+
+  <c-col lg="6">
+    <c-card class="mb-4">
+      <c-card-header><strong>Resume</strong></c-card-header>
+      <c-card-body>
+        <div class="mb-3">
+          <label cLabel>Brake job ID</label>
+          @if (useSelectForResumeJob()) {
+            <select
+              cSelect
+              [(ngModel)]="resumeJobId"
+              (ngModelChange)="onResumeJobSelected($event)"
+            >
+              @if (!resumeJobId) {
+                <option value="" disabled selected>Select brake job…</option>
+              }
+              @for (opt of brakeJobOptions(); track opt.id) {
+                <option [value]="opt.id">{{ opt.label }}</option>
+              }
+            </select>
+            <button
+              cButton
+              color="link"
+              size="sm"
+              type="button"
+              class="px-0 mt-1"
+              (click)="enableCustomResumeJobId()"
+            >
+              Enter custom job ID
+            </button>
+          } @else if (brakeJobOptions().length > 0) {
+            <input
+              cFormControl
+              [(ngModel)]="resumeJobId"
+              (ngModelChange)="onResumeJobIdInput()"
+              placeholder="brake-…"
+            />
+            <button
+              cButton
+              color="link"
+              size="sm"
+              type="button"
+              class="px-0 mt-1"
+              (click)="disableCustomResumeJobId()"
+            >
+              Pick from list
+            </button>
+          } @else {
+            <input
+              cFormControl
+              [(ngModel)]="resumeJobId"
+              (ngModelChange)="onResumeJobIdInput()"
+              [placeholder]="halt()?.emergencyLock ?? 'brake-…'"
+            />
+          }
+        </div>
+
+        <button
+          cButton
+          color="warning"
+          [disabled]="resuming() || !halt()?.halted"
+          (click)="resumeSystem()"
+        >
+          @if (resuming()) { <c-spinner size="sm" /> } @else { Resume system }
+        </button>
+
+        @if (!halt()?.halted) {
+          <div class="small text-body-secondary mt-2">Resume is disabled while the system is running.</div>
+        }
+
+        @if (resumeError(); as err) {
+          <c-alert color="danger" class="mt-3 mb-0 small">
+            {{ err }}
+            @if (halt()?.emergencyLock) {
+              <div class="mt-1">Use emergency lock: <code>{{ halt()?.emergencyLock }}</code></div>
+            }
+          </c-alert>
+        }
+
+        @if (lastResume(); as res) {
+          <c-alert color="success" class="mt-3 mb-0 small">
+            <strong>{{ res.status }}</strong>
+            @if (res.message) { — {{ res.message }} }
+            <div class="mt-1"><code>{{ res.jobId }}</code></div>
+          </c-alert>
+        }
+      </c-card-body>
+    </c-card>
+
+    @if (activeJob(); as job) {
+      <c-card>
+        <c-card-header class="d-flex flex-wrap align-items-center gap-2">
+          <strong>Brake job</strong>
+          <c-badge [color]="jobStatusBadgeColor(job.status)">{{ job.status }}</c-badge>
+          @if (job.mode) {
+            <c-badge color="secondary">{{ job.mode }}</c-badge>
+          }
+          @if (job.sellMode) {
+            <c-badge color="secondary">{{ job.sellMode }}</c-badge>
+          }
+          <button cButton color="light" size="sm" class="ms-auto" type="button" (click)="refreshBrakeJob()">
+            Refresh
+          </button>
+        </c-card-header>
+        <c-card-body>
+          <dl class="job-meta">
+            <dt>Job ID</dt>
+            <dd><code>{{ job.jobId }}</code></dd>
+
+            @if (job.scope) {
+              <dt>Scope</dt>
+              <dd>
+                {{ job.scope }}
+                @if (job.cycleId) {
+                  · <code>{{ job.cycleId }}</code>
+                }
+              </dd>
+            }
+
+            @if (job.sellMode) {
+              <dt>Sell mode</dt>
+              <dd>{{ job.sellMode }}</dd>
+            }
+
+            @if (job.walletsAffected != null) {
+              <dt>Wallets affected</dt>
+              <dd>{{ job.walletsAffected }}</dd>
+            }
+
+            @if (job.systemHalted != null) {
+              <dt>System halted</dt>
+              <dd>{{ job.systemHalted ? 'Yes' : 'No' }}</dd>
+            }
+
+            @if (job.drainJobId) {
+              <dt>Drain job ID</dt>
+              <dd><code>{{ job.drainJobId }}</code> (poll via treasury lifecycle)</dd>
+            }
+
+            @if (job.message) {
+              <dt>Message</dt>
+              <dd>{{ job.message }}</dd>
+            }
+
+            @if (job.usdRecovered != null) {
+              <dt>USD recovered</dt>
+              <dd>{{ job.usdRecovered | currency }}</dd>
+            }
+
+            @if (job.durationMs != null) {
+              <dt>Duration</dt>
+              <dd>{{ job.durationMs }} ms</dd>
+            }
+          </dl>
+
+          @if (job.progress) {
+            <div class="small mb-2">
+              Processed {{ job.progress.walletsProcessed ?? 0 }}
+              · Sold {{ job.progress.walletsSold ?? 0 }}
+              · Failed {{ job.progress.walletsFailed ?? 0 }}
+              @if (job.walletsAffected) {
+                / {{ job.walletsAffected }} total
+              }
+            </div>
+            <c-progress [value]="brakeProgress()" color="danger" class="mb-0" />
+            <div class="small text-body-secondary mt-1">{{ brakeProgress() }}% complete</div>
+          } @else if (job.walletsAffected) {
+            <div class="small text-body-secondary">Queued — {{ job.walletsAffected }} wallets affected</div>
+          }
+          <p class="small text-body-secondary mt-3 mb-0">GET /emergency/brake/{{ job.jobId }} — poll every 3s until terminal.</p>
+        </c-card-body>
+      </c-card>
+    } @else {
+      <c-card>
+        <c-card-body class="text-body-secondary small">
+          Trigger a brake to monitor job progress here (polls every 3s until terminal status).
+        </c-card-body>
+      </c-card>
+    }
+
+    @if (drainJob(); as drain) {
+      <c-card class="mt-4">
+        <c-card-header class="d-flex flex-wrap align-items-center gap-2">
+          <strong>Full drain job</strong>
+          <c-badge [color]="treasuryPhaseBadgeColor(drain.phase)">{{ drain.phase }}</c-badge>
+          <c-badge [color]="jobStatusBadgeColor(drain.status)">{{ drain.status }}</c-badge>
+          <button cButton color="light" size="sm" class="ms-auto" type="button" (click)="refreshDrainJob()">
+            Refresh
+          </button>
+        </c-card-header>
+        <c-card-body>
+          <dl class="job-meta mb-0">
+            <dt>Drain job ID</dt>
+            <dd><code>{{ drain.jobId }}</code></dd>
+            @if (drain.walletStrategy) {
+              <dt>Wallet strategy</dt>
+              <dd>{{ drain.walletStrategy }}</dd>
+            }
+            @if (drain.walletsCreated != null || drain.walletsReused != null) {
+              <dt>Wallets</dt>
+              <dd>Created {{ drain.walletsCreated ?? 0 }} · Reused {{ drain.walletsReused ?? 0 }}</dd>
+            }
+            @if (drain.mainFeeUsdBefore != null) {
+              <dt>Withdrawal USD</dt>
+              <dd>{{ drain.mainFeeUsdBefore | currency }} → {{ drain.mainFeeUsdAfter | currency }}</dd>
+            }
+            @if (drain.createdAt) {
+              <dt>Created</dt>
+              <dd>{{ drain.createdAt | date: 'medium' }}</dd>
+            }
+            @if (drain.completedAt) {
+              <dt>Completed</dt>
+              <dd>{{ drain.completedAt | date: 'medium' }}</dd>
+            }
+            @if (drain.errorMessage) {
+              <dt>Error</dt>
+              <dd class="text-danger">{{ drain.errorMessage }}</dd>
+            }
+          </dl>
+        </c-card-body>
+      </c-card>
+    }
+  </c-col>
+</c-row>

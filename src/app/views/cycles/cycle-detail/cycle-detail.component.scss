@@ -1,0 +1,62 @@
+.pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.pipeline-step {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--cui-border-color);
+  color: var(--cui-secondary-color);
+}
+
+.pipeline-step.done {
+  background: var(--cui-success-bg-subtle, rgba(25, 135, 84, 0.1));
+  border-color: var(--cui-success);
+  color: var(--cui-success);
+}
+
+.pipeline-step.current {
+  background: var(--cui-primary-bg-subtle, rgba(13, 110, 253, 0.1));
+  border-color: var(--cui-primary);
+  color: var(--cui-primary);
+  font-weight: 600;
+}
+
+.pipeline-step.failed {
+  background: var(--cui-danger-bg-subtle, rgba(220, 53, 69, 0.1));
+  border-color: var(--cui-danger);
+  color: var(--cui-danger);
+}
+
+.timeline-entry {
+  border-left: 2px solid var(--cui-border-color);
+  padding-left: 1rem;
+  padding-bottom: 1rem;
+  margin-left: 0.5rem;
+}
+
+.meta-list {
+  font-size: 0.875rem;
+}
+
+.meta-list dt {
+  color: var(--cui-secondary-color);
+  font-weight: 500;
+  margin-bottom: 0.125rem;
+}
+
+.meta-list dd {
+  margin-bottom: 0.75rem;
+}
+
+.cycle-tab-nav {
+  margin-bottom: 1rem;
+}
+
+.wallet-expand-row {
+  background: var(--cui-tertiary-bg);
+}

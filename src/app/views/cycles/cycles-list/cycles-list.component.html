@@ -1,0 +1,150 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h2 class="mb-1">Cycles</h2>
+    <p class="text-body-secondary small mb-0">Orchestration cycles — list, start, and monitor</p>
+  </div>
+</div>
+
+<c-row class="g-4">
+  <c-col lg="12">
+    <c-card>
+      <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <strong>All cycles</strong>
+          @if (!loading()) {
+            <span class="text-body-secondary small">{{ total() }} total</span>
+          }
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <select
+            cSelect
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="onStatusChange($event)"
+            style="width: auto; min-width: 10rem"
+          >
+            @for (s of statusOptions; track s) {
+              <option [value]="s">{{ s || 'All statuses' }}</option>
+            }
+          </select>
+          <select
+            cSelect
+            [ngModel]="limit()"
+            (ngModelChange)="onLimitChange($event)"
+            style="width: auto"
+          >
+            @for (l of limitOptions; track l) {
+              <option [value]="l">{{ l }} / page</option>
+            }
+          </select>
+          <button cButton color="light" size="sm" type="button" (click)="load()">Refresh</button>
+          <button
+            cButton
+            color="primary"
+            size="sm"
+            [disabled]="startingCycle() || isHalted()?.halted"
+            (click)="toggleStartForm()"
+          >
+            @if (startingCycle()) { <c-spinner size="sm" /> } @else { Start cycle }
+          </button>
+        </div>
+      </c-card-header>
+
+      <c-card-body>
+        @if (showStartForm()) {
+          <div class="cycles-start-form mb-4">
+            <h6 class="mb-3">POST /core-trigger/cycles</h6>
+            <c-row>
+              <c-col md="3" class="mb-3">
+                <label cLabel>Network</label>
+                <select cSelect [(ngModel)]="startNetwork">
+                  <option value="">Auto (from settings)</option>
+                  @for (n of networkOptions; track n) {
+                    <option [value]="n">{{ n }}</option>
+                  }
+                </select>
+              </c-col>
+              <c-col md="3" class="mb-3">
+                <label cLabel>Force launchpad</label>
+                <select cSelect [(ngModel)]="startLaunchpad">
+                  <option value="">Auto</option>
+                  @for (lp of launchpadOptions; track lp) {
+                    <option [value]="lp">{{ lp }}</option>
+                  }
+                </select>
+              </c-col>
+              <c-col md="6" class="mb-3 d-flex align-items-end gap-3 flex-wrap">
+                <c-form-check>
+                  <input cFormCheckInput type="checkbox" id="start-dry-run" [(ngModel)]="startDryRun" />
+                  <label cFormCheckLabel for="start-dry-run">Dry run</label>
+                </c-form-check>
+                <c-form-check>
+                  <input cFormCheckInput type="checkbox" id="start-ignore-peak" [(ngModel)]="startIgnorePeakSchedule" />
+                  <label cFormCheckLabel for="start-ignore-peak">Ignore peak schedule</label>
+                </c-form-check>
+              </c-col>
+            </c-row>
+            <div class="d-flex gap-2">
+              <button cButton color="primary" [disabled]="startingCycle() || isHalted()?.halted" (click)="startCycle()">
+                @if (startingCycle()) { <c-spinner size="sm" /> } @else { Confirm start }
+              </button>
+              <button cButton color="light" type="button" (click)="showStartForm.set(false)">Cancel</button>
+            </div>
+            @if (isHalted()?.halted) {
+              <div class="small text-danger mt-2">System is halted — start cycle is disabled.</div>
+            }
+          </div>
+        }
+
+        @if (loading()) {
+          <div class="text-center py-4"><c-spinner /></div>
+        } @else if (cycleList().length === 0) {
+          <p class="text-body-secondary mb-0">No cycles found.</p>
+        } @else {
+          <table cTable hover responsive>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Network</th>
+                <th>Launchpad</th>
+                <th>Started</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cycle of cycleList(); track cycle.id) {
+                <tr class="table-row-link" [routerLink]="['/cycles', cycle.id]">
+                  <td><code class="small">{{ cycle.id }}</code></td>
+                  <td><app-cycle-status-badge [status]="cycle.status" /></td>
+                  <td>{{ cycle.network }}</td>
+                  <td>{{ cycle.launchpad ?? '—' }}</td>
+                  <td>{{ cycle.startedAt | date: 'medium' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          @if (totalPages() > 1) {
+            <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+              <small class="text-body-secondary">
+                Page {{ page() }} of {{ totalPages() }}
+              </small>
+              <c-pagination class="mb-0">
+                <c-page-item [disabled]="page() === 1">
+                  <button cPageLink type="button" (click)="goToPage(page() - 1)">‹</button>
+                </c-page-item>
+                @for (p of pageNumbers(); track p) {
+                  <c-page-item [active]="page() === p">
+                    <button cPageLink type="button" (click)="goToPage(p)">{{ p }}</button>
+                  </c-page-item>
+                }
+                <c-page-item [disabled]="page() === totalPages()">
+                  <button cPageLink type="button" (click)="goToPage(page() + 1)">›</button>
+                </c-page-item>
+              </c-pagination>
+            </div>
+          }
+        }
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>

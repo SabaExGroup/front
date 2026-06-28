@@ -1,0 +1,9 @@
+services:
+  admin-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: token-platform-admin-ui
+    ports:
+      - "0.0.0.0:4215:4215"
+    restart: unless-stopped

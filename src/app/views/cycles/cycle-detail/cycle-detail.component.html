@@ -1,0 +1,739 @@
+@if (loading()) {
+  <div class="text-center py-5"><c-spinner /></div>
+} @else if (cycle(); as c) {
+  <c-row class="mb-3 align-items-start g-3">
+    <c-col>
+      <a routerLink="/cycles" class="text-body-secondary small">← Back to cycles</a>
+      <h2 class="mb-1 d-flex flex-wrap align-items-center gap-2">
+        Cycle
+        <code class="small">{{ c.id }}</code>
+        <app-cycle-status-badge [status]="c.status" />
+        @if (polling()) {
+          <c-badge color="info">Live · 5s</c-badge>
+        }
+      </h2>
+      <div class="text-body-secondary small">
+        {{ c.network }} · {{ c.launchpad ?? 'auto launchpad' }} · started {{ c.startedAt | date: 'medium' }}
+      </div>
+    </c-col>
+    <c-col xs="auto" class="d-flex flex-wrap gap-2">
+      <button cButton color="light" size="sm" type="button" (click)="refresh()">Refresh</button>
+      @if (canAbort()) {
+        <button cButton color="danger" variant="outline" size="sm" [disabled]="actionLoading()" (click)="abortCycle()">
+          Abort
+        </button>
+      }
+    </c-col>
+  </c-row>
+
+  <div class="pipeline">
+    @for (step of pipelineSteps; track step) {
+      <span class="pipeline-step" [class]="stepState(step, c.status)">{{ step }}</span>
+    }
+    @if (c.status === 'COMPLETED') {
+      <span class="pipeline-step done">COMPLETED</span>
+    }
+    @if (c.status === 'FAILED' || c.status === 'ABORTED') {
+      <span class="pipeline-step failed">{{ c.status }}</span>
+    }
+  </div>
+
+  <c-tabs [activeItemKey]="activeTab()" (activeItemKeyChange)="onTabChange($event)">
+    <c-tabs-list variant="tabs" class="cycle-tab-nav">
+      <button cTab itemKey="overview" type="button">Overview</button>
+      <button cTab itemKey="wallets" type="button">Wallets</button>
+      <button cTab itemKey="profit" type="button">Profit</button>
+      <button cTab itemKey="analysis" type="button">Analysis</button>
+      <button cTab itemKey="ops" type="button">Ops</button>
+    </c-tabs-list>
+
+    <c-tabs-content>
+      <!-- Overview -->
+      <c-tab-panel itemKey="overview">
+        <c-row class="g-4">
+          <c-col lg="8">
+            <c-card class="mb-4">
+              <c-card-header><strong>Timeline</strong></c-card-header>
+              <c-card-body>
+                @if (c.cycleLogs.length === 0) {
+                  <p class="text-body-secondary mb-0">No logs yet.</p>
+                } @else {
+                  @for (log of c.cycleLogs; track log.at + log.step) {
+                    <div class="timeline-entry">
+                      <div class="fw-semibold">{{ log.step }}</div>
+                      <div>{{ log.message }}</div>
+                      <small class="text-body-secondary">{{ log.at | date: 'medium' }}</small>
+                    </div>
+                  }
+                }
+              </c-card-body>
+            </c-card>
+
+            @if (canRetry()) {
+              <c-card>
+                <c-card-header><strong>Retry / Resume</strong></c-card-header>
+                <c-card-body>
+                  @if (resumeSnapshot(); as snap) {
+                    <c-row class="mb-3">
+                      <c-col md="4"><strong>Failed at</strong><div>{{ snap.failedAtStep ?? '—' }}</div></c-col>
+                      <c-col md="4"><strong>Suggested step</strong><div>{{ snap.suggestedResumeStep ?? '—' }}</div></c-col>
+                      <c-col md="4"><strong>Can resume</strong><div>{{ snap.canResume ? 'Yes' : 'No' }}</div></c-col>
+                    </c-row>
+                  }
+                  <c-row>
+                    <c-col md="4" class="mb-3">
+                      <label cLabel>Mode</label>
+                      <select cSelect [(ngModel)]="retryMode">
+                        <option value="resume">resume</option>
+                        <option value="restart">restart</option>
+                      </select>
+                    </c-col>
+                    <c-col md="4" class="mb-3">
+                      <label cLabel>From step</label>
+                      <select cSelect [(ngModel)]="retryFromStep">
+                        <option value="">Suggested</option>
+                        @for (step of pipelineSteps; track step) {
+                          <option [value]="step">{{ step }}</option>
+                        }
+                      </select>
+                    </c-col>
+                    <c-col md="4" class="mb-3 d-flex align-items-end gap-3 flex-wrap">
+                      <c-form-check>
+                        <input cFormCheckInput type="checkbox" id="retry-force" [(ngModel)]="retryForce" />
+                        <label cFormCheckLabel for="retry-force">Force</label>
+                      </c-form-check>
+                      <c-form-check>
+                        <input cFormCheckInput type="checkbox" id="retry-regen" [(ngModel)]="retryRegenerateTrend" />
+                        <label cFormCheckLabel for="retry-regen">Regenerate trend</label>
+                      </c-form-check>
+                      <c-form-check>
+                        <input cFormCheckInput type="checkbox" id="retry-dry" [(ngModel)]="retryDryRun" />
+                        <label cFormCheckLabel for="retry-dry">Dry run</label>
+                      </c-form-check>
+                    </c-col>
+                  </c-row>
+                  <button cButton color="warning" [disabled]="actionLoading()" (click)="retryCycle()">
+                    @if (actionLoading()) { <c-spinner size="sm" /> } @else { Retry / Resume }
+                  </button>
+                  @if (lastRetry(); as retry) {
+                    <div class="small mt-3 text-body-secondary">
+                      Last retry: {{ retry.status }} · mode {{ retry.mode }}
+                      @if (retry.resumeFromStep) { · from {{ retry.resumeFromStep }} }
+                    </div>
+                  }
+                </c-card-body>
+              </c-card>
+            }
+          </c-col>
+
+          <c-col lg="4">
+            <c-card class="mb-4">
+              <c-card-header><strong>Relations</strong></c-card-header>
+              <c-card-body>
+                <dl class="meta-list mb-0">
+                  <dt>Token ID</dt><dd><code class="small">{{ c.tokenId ?? '—' }}</code></dd>
+                  <dt>Trend package ID</dt><dd><code class="small">{{ c.trendPackageId ?? '—' }}</code></dd>
+                  <dt>Market session ID</dt><dd><code class="small">{{ c.marketSessionId ?? '—' }}</code></dd>
+                </dl>
+              </c-card-body>
+            </c-card>
+
+            @if (c.token) {
+              <c-card class="mb-4">
+                <c-card-header><strong>Token</strong></c-card-header>
+                <c-card-body>
+                  <div class="fw-semibold">{{ c.token.name }} ({{ c.token.symbol }})</div>
+                  <code class="small d-block text-break mt-1">{{ c.token.address }}</code>
+                </c-card-body>
+              </c-card>
+            }
+
+            @if (c.trendPackage) {
+              <c-card class="mb-4">
+                <c-card-header><strong>Trend package</strong></c-card-header>
+                <c-card-body>
+                  @if (logoUrl(); as url) {
+                    <img [src]="url" alt="logo" class="mb-2 rounded" style="max-width: 64px" />
+                  }
+                  <div class="fw-semibold">{{ c.trendPackage.name }}</div>
+                  <div class="small">{{ c.trendPackage.trendTopic }}</div>
+                </c-card-body>
+              </c-card>
+            }
+
+            @if (c.marketSession) {
+              <c-card>
+                <c-card-header><strong>Market session</strong></c-card-header>
+                <c-card-body>
+                  <c-badge color="info">{{ c.marketSession.status }}</c-badge>
+                  <div class="mt-2">Trades executed: {{ c.marketSession.tradesExecuted ?? 0 }}</div>
+                </c-card-body>
+              </c-card>
+            }
+          </c-col>
+        </c-row>
+      </c-tab-panel>
+
+      <!-- Wallets -->
+      <c-tab-panel itemKey="wallets">
+        <c-card class="mb-4">
+          <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <strong>Market wallet balances</strong>
+            <div class="d-flex flex-wrap gap-2">
+              <button
+                cButton
+                color="light"
+                size="sm"
+                type="button"
+                [disabled]="marketBalancesLoading() || marketBalancesSyncing()"
+                (click)="loadMarketBalances()"
+              >
+                @if (marketBalancesLoading()) { <c-spinner size="sm" /> } @else { Load (DB) }
+              </button>
+              <button
+                cButton
+                color="primary"
+                size="sm"
+                type="button"
+                [disabled]="marketBalancesLoading() || marketBalancesSyncing()"
+                (click)="syncMarketBalances()"
+              >
+                @if (marketBalancesSyncing()) { <c-spinner size="sm" /> } @else { Sync from chain }
+              </button>
+            </div>
+          </c-card-header>
+          <c-card-body>
+            <p class="small text-body-secondary mb-3">
+              All MARKET wallets for this cycle (active and inactive). Sync runs in parallel via RPC with force refresh.
+            </p>
+            @if (marketBalancesLoading() && !marketBalances()) {
+              <div class="text-center py-3"><c-spinner /></div>
+            } @else if (marketBalances(); as mb) {
+              @if (mb.failedSyncCount > 0) {
+                <c-alert color="warning" class="mb-3">
+                  {{ mb.failedSyncCount }} wallet{{ mb.failedSyncCount === 1 ? '' : 's' }} failed to sync — remaining wallets completed.
+                </c-alert>
+              }
+              <c-row class="g-3 mb-4">
+                <c-col sm="6" md="3">
+                  <div class="small text-body-secondary">Total native</div>
+                  <div class="fw-semibold">{{ mb.totalNative }}</div>
+                </c-col>
+                <c-col sm="6" md="3">
+                  <div class="small text-body-secondary">Total USD</div>
+                  <div class="fw-semibold">{{ mb.totalUsd | currency }}</div>
+                </c-col>
+                <c-col sm="6" md="3">
+                  <div class="small text-body-secondary">Wallets</div>
+                  <div class="fw-semibold">{{ mb.activeWalletCount }} active / {{ mb.walletCount }} total</div>
+                </c-col>
+                <c-col sm="6" md="3">
+                  <div class="small text-body-secondary">Last synced (RPC)</div>
+                  <div class="fw-semibold">
+                    @if (mb.syncedAt) {
+                      {{ mb.syncedAt | date: 'medium' }}
+                    } @else {
+                      —
+                    }
+                  </div>
+                </c-col>
+              </c-row>
+              @if (mb.wallets.length === 0) {
+                <p class="text-body-secondary mb-0">No MARKET wallets for this cycle.</p>
+              } @else {
+                <table cTable hover responsive small>
+                  <thead>
+                    <tr>
+                      <th>Address</th>
+                      <th>Native</th>
+                      <th>USD</th>
+                      <th>Active</th>
+                      <th>Refreshed</th>
+                      <th>Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (w of mb.wallets; track w.id) {
+                      <tr [class.table-warning]="w.syncError">
+                        <td><code class="small">{{ w.address }}</code></td>
+                        <td>{{ w.balanceNative }}</td>
+                        <td>{{ w.balanceUsd | currency }}</td>
+                        <td>{{ w.isActive ? 'Yes' : 'No' }}</td>
+                        <td>
+                          @if (w.refreshedAt) {
+                            {{ w.refreshedAt | date: 'short' }}
+                          } @else {
+                            —
+                          }
+                        </td>
+                        <td>
+                          @if (w.syncError) {
+                            <span class="text-danger small">{{ marketBalanceSourceLabel(w) }}</span>
+                          } @else {
+                            <span class="text-body-secondary small">{{ marketBalanceSourceLabel(w) }}</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            } @else {
+              <span class="text-body-secondary small">Not loaded — use Load (DB) or Sync from chain.</span>
+            }
+          </c-card-body>
+        </c-card>
+
+        <c-row class="mb-4">
+          <c-col lg="6">
+            <c-card>
+              <c-card-header><strong>Fund manually</strong></c-card-header>
+              <c-card-body>
+                <p class="small text-body-secondary">Fund selected wallets ({{ selectedWalletIds().size }} selected)</p>
+                <c-row>
+                  <c-col md="6" class="mb-3">
+                    <label cLabel>Source asset</label>
+                    <select cSelect [(ngModel)]="fundSourceAsset">
+                      <option value="USDC">USDC</option>
+                      <option value="ETH">ETH</option>
+                    </select>
+                  </c-col>
+                  <c-col md="6" class="mb-3">
+                    <label cLabel>Amount per wallet (USD)</label>
+                    <input cFormControl type="number" min="0" step="0.01" [(ngModel)]="fundAmountPerWallet" />
+                  </c-col>
+                </c-row>
+                <button cButton color="secondary" size="sm" [disabled]="actionLoading() || selectedWalletIds().size === 0" (click)="fundSelectedWallets()">
+                  Fund selected
+                </button>
+              </c-card-body>
+            </c-card>
+          </c-col>
+          <c-col lg="6">
+            <c-card>
+              <c-card-header><strong>Generate</strong></c-card-header>
+              <c-card-body>
+                <p class="small text-body-secondary">Generate wallets</p>
+                <c-row>
+                  <c-col md="4" class="mb-3">
+                    <label cLabel>Network</label>
+                    <select cSelect [(ngModel)]="generateNetwork">
+                      @for (n of networkOptions; track n) { <option [value]="n">{{ n }}</option> }
+                    </select>
+                  </c-col>
+                  <c-col md="4" class="mb-3">
+                    <label cLabel>Type</label>
+                    <select cSelect [(ngModel)]="generateType">
+                      @for (t of walletTypeOptions; track t) { <option [value]="t">{{ t }}</option> }
+                    </select>
+                  </c-col>
+                  <c-col md="4" class="mb-3">
+                    <label cLabel>Count</label>
+                    <input cFormControl type="number" min="1" [(ngModel)]="generateCount" />
+                  </c-col>
+                </c-row>
+                <button cButton color="primary" size="sm" [disabled]="actionLoading()" (click)="generateWallets()">Generate</button>
+              </c-card-body>
+            </c-card>
+          </c-col>
+        </c-row>
+        <c-card class="mb-4">
+          <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <strong>Wallets</strong>
+            <div class="d-flex flex-wrap gap-2">
+              <select cSelect [(ngModel)]="walletNetworkFilter" (ngModelChange)="walletPage.set(1); loadWallets()" style="width: auto">
+                <option value="">All networks</option>
+                @for (n of networkOptions; track n) { <option [value]="n">{{ n }}</option> }
+              </select>
+              <select cSelect [(ngModel)]="walletTypeFilter" (ngModelChange)="walletPage.set(1); loadWallets()" style="width: auto">
+                <option value="">All types</option>
+                @for (t of walletTypeOptions; track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+              <button cButton color="light" size="sm" type="button" (click)="loadWallets()">Refresh</button>
+            </div>
+          </c-card-header>
+          <c-card-body>
+            @if (walletsLoading()) {
+              <div class="text-center py-3"><c-spinner /></div>
+            } @else if (walletList().length === 0) {
+              <p class="text-body-secondary mb-0">No wallets for this cycle.</p>
+            } @else {
+              <table cTable hover responsive small>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Address</th>
+                    <th>Network</th>
+                    <th>Type</th>
+                    <th>Native</th>
+                    <th>USD</th>
+                    <th>Active</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (w of walletList(); track w.id) {
+                    <tr>
+                      <td>
+                        <input
+                          type="checkbox"
+                          class="form-check-input"
+                          [checked]="isWalletSelected(w.id)"
+                          (change)="toggleWalletSelection(w.id, $any($event.target).checked)"
+                        />
+                      </td>
+                      <td><code class="small">{{ w.address }}</code></td>
+                      <td>{{ w.network }}</td>
+                      <td>{{ w.type }}</td>
+                      <td>{{ w.balanceNative ?? '—' }}</td>
+                      <td>{{ w.balanceUsd | number: '1.2-2' }}</td>
+                      <td>{{ w.isActive ? 'Yes' : 'No' }}</td>
+                      <td>
+                        <button cButton color="link" size="sm" type="button" (click)="toggleWalletExpand(w)">
+                          {{ expandedWalletId() === w.id ? 'Hide' : 'Balance' }}
+                        </button>
+                      </td>
+                    </tr>
+                    @if (expandedWalletId() === w.id) {
+                      <tr class="wallet-expand-row">
+                        <td colspan="8">
+                          @if (balanceLoading()) {
+                            <c-spinner size="sm" />
+                          } @else if (expandedWalletBalance(); as bal) {
+                            <span class="small">
+                              Live: {{ bal.balanceNative }} native · {{ bal.balanceUsd | currency }} USD
+                              @if (bal.refreshedAt) { · {{ bal.refreshedAt | date: 'short' }} }
+                            </span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+              <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+                <small class="text-body-secondary">
+                  {{ walletTotal() }} wallets total · page {{ walletPage() }} of {{ walletPages() }}
+                </small>
+                @if (walletPages() > 1) {
+                  <c-pagination class="mb-0" aria-label="Wallet pages">
+                    <c-page-item [disabled]="walletPage() === 1">
+                      <button cPageLink type="button" (click)="goWalletPage(walletPage() - 1)">‹</button>
+                    </c-page-item>
+                    @for (p of walletPageNumbers(); track p) {
+                      <c-page-item [active]="walletPage() === p">
+                        <button cPageLink type="button" (click)="goWalletPage(p)">{{ p }}</button>
+                      </c-page-item>
+                    }
+                    <c-page-item [disabled]="walletPage() === walletPages()">
+                      <button cPageLink type="button" (click)="goWalletPage(walletPage() + 1)">›</button>
+                    </c-page-item>
+                  </c-pagination>
+                }
+              </div>
+            }
+          </c-card-body>
+        </c-card>
+      </c-tab-panel>
+
+      <!-- Profit -->
+      <c-tab-panel itemKey="profit">
+        <c-row class="g-4">
+          <c-col lg="5">
+            <c-card>
+              <c-card-header class="d-flex justify-content-between align-items-center">
+                <strong>Profit extractor</strong>
+                <button cButton color="primary" size="sm" (click)="runProfitExtraction()">Run</button>
+              </c-card-header>
+              <c-card-body>
+                @if (profitLoading()) {
+                  <c-spinner size="sm" />
+                } @else if (profitStatus(); as ps) {
+                  @if (ps.status === 'UNAVAILABLE') {
+                    <c-badge color="secondary">{{ ps.reason ?? 'Unavailable' }}</c-badge>
+                  } @else {
+                    <dl class="meta-list">
+                      @if (ps.tokenAddress) {
+                        <dt>Token</dt><dd><code class="small">{{ ps.tokenAddress }}</code></dd>
+                      }
+                      <dt>Held / max</dt>
+                      <dd>{{ ps.heldPercent | number: '1.1-1' }}% / {{ ps.maxPercent }}%</dd>
+                      @if (ps.excessTokens) {
+                        <dt>Excess tokens</dt><dd>{{ ps.excessTokens }}</dd>
+                      }
+                      @if (ps.totalSupply) {
+                        <dt>Total supply</dt><dd>{{ ps.totalSupply }}</dd>
+                      }
+                      @if (ps.lastExtractionAt) {
+                        <dt>Last extraction</dt><dd>{{ ps.lastExtractionAt | date: 'medium' }}</dd>
+                      }
+                    </dl>
+                    @if (ps.heldPercent != null && ps.maxPercent != null) {
+                      <c-progress [value]="profitHeldProgress()" color="warning" class="mt-2" />
+                    }
+                    <c-form-check class="mt-3">
+                      <input cFormCheckInput type="checkbox" id="profit-force" [(ngModel)]="profitForce" />
+                      <label cFormCheckLabel for="profit-force">Force run</label>
+                    </c-form-check>
+                  }
+                }
+                @if (lastProfitJob(); as job) {
+                  <div class="small mt-3 pt-3 border-top">
+                    Last job: <c-badge [color]="jobStatusBadgeColor(job.status)">{{ job.status }}</c-badge>
+                    @if (job.jobId) { · <code>{{ job.jobId }}</code> }
+                  </div>
+                }
+              </c-card-body>
+            </c-card>
+          </c-col>
+          <c-col lg="7">
+            <c-card>
+              <c-card-header><strong>Extraction logs</strong></c-card-header>
+              <c-card-body>
+                @if (profitLogs().length === 0) {
+                  <p class="text-body-secondary mb-0">No extraction logs.</p>
+                } @else {
+                  <table cTable small hover responsive>
+                    <thead>
+                      <tr>
+                        <th>Status</th>
+                        <th>Before %</th>
+                        <th>After %</th>
+                        <th>Tokens sold</th>
+                        <th>USD</th>
+                        <th>At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (log of profitLogs(); track log.id ?? log.createdAt) {
+                        <tr>
+                          <td>{{ log.status }}</td>
+                          <td>{{ log.heldPercentBefore }}</td>
+                          <td>{{ log.heldPercentAfter }}</td>
+                          <td>{{ log.tokensSold ?? '—' }}</td>
+                          <td>{{ log.usdRecovered | number: '1.2-2' }}</td>
+                          <td>{{ log.createdAt | date: 'short' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                  <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+                    <small class="text-body-secondary">
+                      {{ profitLogsTotal() }} logs total · page {{ profitLogsPage() }} of {{ profitLogsPages() }}
+                    </small>
+                    @if (profitLogsPages() > 1) {
+                      <c-pagination class="mb-0" aria-label="Extraction log pages">
+                        <c-page-item [disabled]="profitLogsPage() === 1">
+                          <button cPageLink type="button" (click)="goProfitLogsPage(profitLogsPage() - 1)">‹</button>
+                        </c-page-item>
+                        @for (p of profitLogsPageNumbers(); track p) {
+                          <c-page-item [active]="profitLogsPage() === p">
+                            <button cPageLink type="button" (click)="goProfitLogsPage(p)">{{ p }}</button>
+                          </c-page-item>
+                        }
+                        <c-page-item [disabled]="profitLogsPage() === profitLogsPages()">
+                          <button cPageLink type="button" (click)="goProfitLogsPage(profitLogsPage() + 1)">›</button>
+                        </c-page-item>
+                      </c-pagination>
+                    }
+                  </div>
+                }
+              </c-card-body>
+            </c-card>
+          </c-col>
+        </c-row>
+      </c-tab-panel>
+
+      <!-- Analysis -->
+      <c-tab-panel itemKey="analysis">
+        @if (!c.token?.address) {
+          <c-alert color="secondary">Token not launched yet — analysis available after TOKEN_LAUNCH.</c-alert>
+        } @else {
+          <div class="mb-3">
+            <button cButton color="primary" size="sm" [disabled]="analysisLoading()" (click)="loadAnalysis()">
+              @if (analysisLoading()) { <c-spinner size="sm" /> } @else { Load analysis }
+            </button>
+          </div>
+          <c-row class="g-4">
+            <c-col lg="4">
+              <c-card>
+                <c-card-header class="d-flex justify-content-between align-items-center">
+                  <strong>Token info</strong>
+                  @if (tokenInfo()?.provider; as provider) {
+                    <c-badge color="secondary">{{ provider }}</c-badge>
+                  }
+                </c-card-header>
+                <c-card-body>
+                  @if (tokenInfo(); as info) {
+                    <dl class="meta-list mb-0">
+                      <dt>Price</dt><dd>{{ info.priceUsd | currency }}</dd>
+                      <dt>Market cap</dt><dd>{{ info.marketCapUsd | currency }}</dd>
+                      <dt>Volume (24h)</dt><dd>{{ info.volume24hUsd | currency }}</dd>
+                      <dt>Liquidity</dt><dd>{{ info.liquidityUsd | currency }}</dd>
+                      <dt>Buys / sells</dt><dd>{{ info.buyCount }} / {{ info.sellCount }}</dd>
+                      <dt>Sentiment</dt>
+                      <dd>
+                        <c-badge [color]="tokenSentimentBadgeColor(info.sentiment)">{{ info.sentiment }}</c-badge>
+                      </dd>
+                      <dt>Updated</dt><dd>{{ info.updatedAt | date: 'medium' }}</dd>
+                    </dl>
+                  } @else {
+                    <span class="text-body-secondary small">Not loaded</span>
+                  }
+                </c-card-body>
+              </c-card>
+            </c-col>
+            <c-col lg="4">
+              <c-card>
+                <c-card-header><strong>Liquidity</strong></c-card-header>
+                <c-card-body>
+                  @if (liquidity(); as liq) {
+                    @if (liq.totalLiquidityUsd != null) {
+                      <div class="mb-2">Total liquidity: {{ liq.totalLiquidityUsd | currency }}</div>
+                    }
+                    @for (entry of analysisEntries(liq); track entry.key) {
+                      @if (entry.key !== 'totalLiquidityUsd' && entry.key !== 'pools') {
+                        <div class="small mb-1"><strong>{{ entry.key }}:</strong> {{ entry.value }}</div>
+                      }
+                    }
+                  } @else {
+                    <span class="text-body-secondary small">Not loaded</span>
+                  }
+                </c-card-body>
+              </c-card>
+            </c-col>
+            <c-col lg="4">
+              <c-card>
+                <c-card-header><strong>Security</strong></c-card-header>
+                <c-card-body>
+                  @if (security(); as sec) {
+                    <div class="mb-2">
+                      Score: <strong>{{ sec.score }}</strong>
+                      · <c-badge [color]="sec.isSafe ? 'success' : 'danger'">{{ sec.isSafe ? 'Safe' : 'Risky' }}</c-badge>
+                    </div>
+                    @if (sec.provider) { <div class="small mb-2">Provider: {{ sec.provider }}</div> }
+                    @if (sec.checkedAt) { <div class="small mb-2">Checked: {{ sec.checkedAt | date: 'medium' }}</div> }
+                    @if (sec.risks.length) {
+                      <ul class="small mb-0 ps-3">
+                        @for (risk of sec.risks; track $index) {
+                          <li>{{ risk.severity }} — {{ risk.description ?? risk.code }}</li>
+                        }
+                      </ul>
+                    }
+                  } @else {
+                    <span class="text-body-secondary small">Not loaded</span>
+                  }
+                </c-card-body>
+              </c-card>
+            </c-col>
+          </c-row>
+        }
+      </c-tab-panel>
+
+      <!-- Ops -->
+      <c-tab-panel itemKey="ops">
+        <c-row class="g-4">
+          <c-col lg="6">
+            <c-card class="mb-4">
+              <c-card-header><strong>Regenerate trend</strong></c-card-header>
+              <c-card-body>
+                <div class="mb-3">
+                  <label cLabel>Style</label>
+                  <select cSelect [(ngModel)]="regenerateStyle">
+                    <option value="">Default</option>
+                    <option value="viral">viral</option>
+                    <option value="controversial">controversial</option>
+                    <option value="meme">meme</option>
+                  </select>
+                </div>
+                <button cButton color="secondary" size="sm" [disabled]="opsLoading()" (click)="regenerateTrend()">Regenerate trend</button>
+              </c-card-body>
+            </c-card>
+
+            <c-card class="mb-4">
+              <c-card-header class="d-flex justify-content-between">
+                <strong>Launchpad recommendation</strong>
+                <button cButton color="light" size="sm" type="button" (click)="loadBestLaunchpad()">Fetch</button>
+              </c-card-header>
+              <c-card-body>
+                @if (bestLaunchpad(); as rec) {
+                  <div class="fw-semibold">{{ rec.launchpad }} · score {{ rec.score }}</div>
+                  <ul class="small mb-0 ps-3 mt-2">
+                    @for (reason of rec.reasons; track reason) { <li>{{ reason }}</li> }
+                  </ul>
+                } @else {
+                  <span class="text-body-secondary small">Click Fetch for {{ c.network }}</span>
+                }
+              </c-card-body>
+            </c-card>
+
+            <c-card>
+              <c-card-header><strong>Launch token</strong></c-card-header>
+              <c-card-body>
+                <c-row>
+                  <c-col md="6" class="mb-3">
+                    <label cLabel>Launchpad override</label>
+                    <select cSelect [(ngModel)]="opsLaunchpad">
+                      <option value="">Auto</option>
+                      @for (lp of launchpadOptions; track lp) { <option [value]="lp">{{ lp }}</option> }
+                    </select>
+                  </c-col>
+                  <c-col md="6" class="mb-3 d-flex align-items-end">
+                    <c-form-check>
+                      <input cFormCheckInput type="checkbox" id="launch-dry" [(ngModel)]="opsLaunchDryRun" />
+                      <label cFormCheckLabel for="launch-dry">Dry run</label>
+                    </c-form-check>
+                  </c-col>
+                </c-row>
+                <button cButton color="primary" size="sm" [disabled]="opsLoading()" (click)="launchToken()">Launch</button>
+                @if (lastLaunch(); as launch) {
+                  <div class="small mt-2"><code>{{ launch.address }}</code> · {{ launch.txHash }}</div>
+                }
+              </c-card-body>
+            </c-card>
+          </c-col>
+
+          <c-col lg="6">
+            <c-card class="mb-4">
+              <c-card-header class="d-flex justify-content-between">
+                <strong>Market making</strong>
+                <button cButton color="light" size="sm" type="button" (click)="refreshMarketSession()">Refresh</button>
+              </c-card-header>
+              <c-card-body>
+                <div class="d-flex gap-2 mb-3">
+                  <button cButton color="success" size="sm" [disabled]="opsLoading() || !c.tokenId" (click)="startMarket()">Start</button>
+                  <button cButton color="danger" size="sm" variant="outline" [disabled]="opsLoading() || !c.marketSessionId" (click)="stopMarket()">Stop</button>
+                </div>
+                @if (marketDetail(); as md) {
+                  <dl class="meta-list mb-0">
+                    <dt>Status</dt><dd><c-badge color="info">{{ md.status }}</c-badge></dd>
+                    <dt>Trades</dt><dd>{{ md.tradesExecuted }} · {{ md.tradesPerMinute }}/min</dd>
+                    <dt>Market cap</dt><dd>{{ md.marketCapUsd | currency }}</dd>
+                    <dt>Volume</dt><dd>{{ md.volumeUsd | currency }}</dd>
+                    <dt>Price change</dt><dd>{{ md.priceChangePercent }}%</dd>
+                    <dt>Gas spent</dt><dd>{{ md.gasSpentUsd | currency }}</dd>
+                    @if (md.phase) { <dt>Phase</dt><dd>{{ md.phase }} @if (md.blitzMode) { (blitz) }</dd> }
+                  </dl>
+                } @else if (c.marketSession) {
+                  <div class="small text-body-secondary">{{ c.marketSession.status }} · {{ c.marketSession.tradesExecuted ?? 0 }} trades</div>
+                } @else {
+                  <div class="small text-body-secondary">No market session yet</div>
+                }
+              </c-card-body>
+            </c-card>
+
+            @if (lastTrend(); as trend) {
+              <c-card>
+                <c-card-header><strong>Last regenerated trend</strong></c-card-header>
+                <c-card-body>
+                  <div class="fw-semibold">{{ trend.name }} ({{ trend.symbol }})</div>
+                  <div class="small">{{ trend.trendTopic }}</div>
+                </c-card-body>
+              </c-card>
+            }
+          </c-col>
+        </c-row>
+      </c-tab-panel>
+    </c-tabs-content>
+  </c-tabs>
+}
