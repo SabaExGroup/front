@@ -126,7 +126,7 @@ describe('settings-form.util', () => {
       expect(payload.treasury?.['consolidate']).toBeUndefined();
     });
 
-    it('includes maxTokenHoldPercent under strategy when changed', () => {
+    it('sends maxTokenHoldPercent at API root when changed in strategy form', () => {
       const apiSnapshot = buildSettingsApiResponse();
       const form = buildSettingsForm(fb, apiSnapshot);
 
@@ -135,9 +135,7 @@ describe('settings-form.util', () => {
       const payload = formToDirtyUpdatePayload(form, apiSnapshot);
 
       expect(payload).toEqual({
-        strategy: {
-          maxTokenHoldPercent: 12,
-        },
+        maxTokenHoldPercent: 12,
       });
     });
 
@@ -157,6 +155,20 @@ describe('settings-form.util', () => {
         minVolume5mUsd: 9000,
       });
       expect(merged['updatedAt']).toBe('2026-06-29T12:00:00.000Z');
+    });
+
+    it('preserves maxTokenHoldPercent when PATCH returns stale legacy root value', () => {
+      const apiSnapshot = buildSettingsApiResponse();
+      const form = buildSettingsForm(fb, apiSnapshot);
+
+      form.get('strategy.maxTokenHoldPercent')?.setValue(12);
+
+      const submitted = formToNormalizedState(form);
+      const payload = formToDirtyUpdatePayload(form, apiSnapshot);
+      const staleResponse = { maxTokenHoldPercent: 8, updatedAt: '2026-06-29T12:00:00.000Z' };
+      const merged = mergeSettingsAfterSave(submitted, staleResponse, payload);
+
+      expect((merged['strategy'] as Record<string, unknown>)['maxTokenHoldPercent']).toBe(12);
     });
 
     it('preserves withdrawalUsdtProfitAddress when PATCH echoes empty integrations', () => {
@@ -202,6 +214,20 @@ describe('settings-form.util', () => {
       expect(form.get('strategy.maxTokenHoldPercent')?.value).toBe(8);
       expect(form.get('strategy.trendFinder.style')?.value).toBe('viral');
       expect(form.get('minLiquidityRatio')).toBeNull();
+    });
+
+    it('prefers strategy.maxTokenHoldPercent over stale legacy root value', () => {
+      const apiSnapshot = {
+        maxTokenHoldPercent: 8,
+        strategy: {
+          maxTokenHoldPercent: 12,
+          mode: 'BLITZ',
+        },
+      };
+
+      const form = buildSettingsForm(fb, apiSnapshot);
+
+      expect(form.get('strategy.maxTokenHoldPercent')?.value).toBe(12);
     });
 
     it('preserves existing trendFinder.style over trendStyleDefault', () => {

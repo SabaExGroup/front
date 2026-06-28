@@ -38,8 +38,19 @@ export function mergeSettingsAfterSave(
   apiResponse: Record<string, unknown>,
   patchSent: Record<string, unknown> = {}
 ): Record<string, unknown> {
-  const sanitized = sanitizeSettingsApiOverlay(submitted, apiResponse);
-  return mergeSettingsPatch(mergeSettingsPatch(submitted, sanitized), patchSent);
+  const withoutLegacyRootKeys = stripLegacyStrategyRootKeys(apiResponse);
+  const sanitized = sanitizeSettingsApiOverlay(submitted, withoutLegacyRootKeys);
+  return normalizeSettingsShape(
+    mergeSettingsPatch(mergeSettingsPatch(submitted, sanitized as Record<string, unknown>), patchSent)
+  );
+}
+
+function stripLegacyStrategyRootKeys(data: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...data };
+  for (const key of STRATEGY_HOISTED_ROOT_KEYS) {
+    delete result[key];
+  }
+  return result;
 }
 
 function sanitizeSettingsApiOverlay(base: unknown, overlay: unknown): unknown {
@@ -84,6 +95,9 @@ const PATCH_ROOT_KEYS = new Set([
   'minTradeAmountUsd',
   'minMarketCapUsd',
   'minLiquidityUsd',
+  'minLiquidityRatio',
+  'minVolume5mUsd',
+  'maxTokenHoldPercent',
   'marketWalletCount',
   'marketWalletUsageMode',
   'securityMinScore',
@@ -95,6 +109,30 @@ const PATCH_ROOT_KEYS = new Set([
   'treasury',
 ]);
 
+/** Backend stores hoisted keys as top-level columns — lift them out of `strategy` before PATCH. */
+function unhoistStrategyRootKeys(payload: Record<string, unknown>): Record<string, unknown> {
+  const strategy = payload['strategy'];
+  if (!isPlainObject(strategy)) {
+    return payload;
+  }
+
+  const nextStrategy = { ...strategy };
+  for (const key of STRATEGY_HOISTED_ROOT_KEYS) {
+    if (nextStrategy[key] !== undefined) {
+      payload[key] = nextStrategy[key];
+      delete nextStrategy[key];
+    }
+  }
+
+  if (Object.keys(nextStrategy).length === 0) {
+    delete payload['strategy'];
+  } else {
+    payload['strategy'] = nextStrategy;
+  }
+
+  return payload;
+}
+
 export function normalizeSettingsShape(data: Record<string, unknown>): Record<string, unknown> {
   const merged = { ...data };
   const strategy = isPlainObject(merged['strategy'])
@@ -105,7 +143,8 @@ export function normalizeSettingsShape(data: Record<string, unknown>): Record<st
     const rootValue = merged[key];
     const strategyValue = strategy[key];
     if (rootValue !== undefined || strategyValue !== undefined) {
-      strategy[key] = rootValue !== undefined ? rootValue : strategyValue;
+      // strategy.* is canonical for UI + PATCH; root keys are legacy GET noise.
+      strategy[key] = strategyValue !== undefined ? strategyValue : rootValue;
     }
     delete merged[key];
   }
@@ -138,7 +177,7 @@ function toPatchPayload(raw: Record<string, unknown>): Record<string, unknown> {
     }
   }
 
-  return payload;
+  return unhoistStrategyRootKeys(payload);
 }
 
 export function buildSettingsForm(fb: FormBuilder, data: Record<string, unknown>): FormGroup {
