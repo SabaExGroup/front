@@ -178,6 +178,11 @@ export class CycleAnalysisTabComponent implements OnInit {
     return `${prefix}${this.formatUsd(value)}`;
   }
 
+  shortAddress(address: string, head = 6, tail = 4): string {
+    if (!address || address.length <= head + tail + 3) return address;
+    return `${address.slice(0, head)}…${address.slice(-tail)}`;
+  }
+
   toggleWalletExpand(group: WalletGroupKey, wallet: CycleAnalysisWalletDto): void {
     const key = `${group}:${wallet.id}`;
     this.expandedWalletKey.update((current) => (current === key ? null : key));
