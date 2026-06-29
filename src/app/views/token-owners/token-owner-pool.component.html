@@ -74,7 +74,7 @@
             <div>
               <strong>Funding in progress…</strong>
               <div class="small">
-                Waiting for ChangeNOW (synchronous). Elapsed: {{ prefundElapsedLabel() }} — do not close this page.
+                Prefund queued — polling wallet balance until launch ready. Elapsed: {{ prefundElapsedLabel() }} — do not close this page.
               </div>
             </div>
           </div>
@@ -162,7 +162,7 @@
                   <c-badge [color]="ownerFundingStatusBadgeColor(walletStatus(w))">
                     {{ ownerFundingStatusLabel(walletStatus(w)) }}
                   </c-badge>
-                  @if (walletStatus(w) === 'ready') {
+                  @if (w.isLaunchReady || walletStatus(w) === 'ready') {
                     <c-badge color="success" class="ms-1">Launch ready</c-badge>
                   }
                   @if (w.cycleId) {

@@ -314,6 +314,7 @@ export interface WalletBalanceResponseDto {
   address: string;
   balanceNative: string;
   balanceUsd?: number;
+  isLaunchReady?: boolean;
   refreshedAt?: string;
 }
 
@@ -326,6 +327,7 @@ export interface TokenOwnerPoolWallet {
   createdAt: string;
   ageHours: number;
   isAssignable: boolean;
+  isLaunchReady?: boolean;
 }
 
 export interface ListTokenOwnerPoolQuery {
@@ -351,7 +353,7 @@ export interface CreatePoolTokenOwnerResponse {
 
 export interface PrefundTokenOwnerRequest {
   network: Network;
-  walletId?: string;
+  walletId: string;
   wait?: boolean;
 }
 
@@ -364,6 +366,7 @@ export interface PrefundTokenOwnerResponse {
   topUpSendUsd?: number;
   shortfallUsd?: number;
   alreadyFunded: boolean;
+  status?: JobStatus;
   jobId?: string;
   poolCycleId?: string;
   waited?: boolean;

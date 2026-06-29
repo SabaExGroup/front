@@ -2,6 +2,7 @@ import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import {
   AlertComponent,
   BadgeComponent,
@@ -17,7 +18,7 @@ import {
   TableDirective,
 } from '@coreui/angular';
 import { GmgnQuickLinkComponent } from '../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
-import { TokenOwnerPoolService } from '../../core/services/token-owner-pool.service';
+import { TokenOwnerPoolService, PREFUND_POLL_TIMEOUT_MS } from '../../core/services/token-owner-pool.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { WalletsService } from '../../core/services/wallets.service';
 import { ToastService } from '../../shared/services/toast.service';
@@ -98,6 +99,8 @@ export class TokenOwnerPoolComponent implements OnInit {
   prefundError = signal<string | null>(null);
   lastPrefundByWalletId = signal<Record<string, PrefundTokenOwnerResponse>>({});
   private prefundTimer?: ReturnType<typeof setInterval>;
+  private prefundPollSub?: Subscription;
+  private prefundPollTimeout?: ReturnType<typeof setTimeout>;
 
   readonly shortAddress = shortAddress;
   readonly walletExplorerUrl = walletExplorerUrl;
@@ -105,12 +108,15 @@ export class TokenOwnerPoolComponent implements OnInit {
   readonly ownerFundingStatusBadgeColor = ownerFundingStatusBadgeColor;
 
   readyCount = computed(() =>
-    this.pool().filter((w) => this.walletStatus(w) === 'ready').length
+    this.pool().filter((w) => w.isLaunchReady === true || this.walletStatus(w) === 'ready').length
   );
 
   ngOnInit(): void {
     this.loadSettings();
-    this.destroyRef.onDestroy(() => this.stopPrefundTimer());
+    this.destroyRef.onDestroy(() => {
+      this.stopPrefundTimer();
+      this.stopPrefundBalancePoll();
+    });
   }
 
   onNetworkChange(): void {
@@ -187,7 +193,11 @@ export class TokenOwnerPoolComponent implements OnInit {
   }
 
   prefundBest(): void {
-    this.runPrefund();
+    const best = this.pickBestPrefundCandidate();
+    if (!best) {
+      return;
+    }
+    this.runPrefund(best.id);
   }
 
   prefundWallet(wallet: TokenOwnerPoolWallet): void {
@@ -205,7 +215,11 @@ export class TokenOwnerPoolComponent implements OnInit {
         this.pool.update((rows) =>
           rows.map((row) =>
             row.id === wallet.id
-              ? { ...row, balanceUsd: balance.balanceUsd ?? row.balanceUsd }
+              ? {
+                  ...row,
+                  balanceUsd: balance.balanceUsd ?? row.balanceUsd,
+                  isLaunchReady: balance.isLaunchReady ?? row.isLaunchReady,
+                }
               : row
           )
         );
@@ -260,6 +274,9 @@ export class TokenOwnerPoolComponent implements OnInit {
     if (this.prefunding() || this.creating() || !this.reuseEnabled()) {
       return false;
     }
+    if (wallet.isLaunchReady) {
+      return false;
+    }
     if (wallet.cycleId != null) {
       return false;
     }
@@ -267,6 +284,14 @@ export class TokenOwnerPoolComponent implements OnInit {
       return false;
     }
     return this.walletStatus(wallet) !== 'ready';
+  }
+
+  private pickBestPrefundCandidate(): TokenOwnerPoolWallet | null {
+    const candidates = this.pool().filter((w) => this.canPrefundWallet(w));
+    if (candidates.length === 0) {
+      return null;
+    }
+    return candidates.reduce((best, w) => (w.balanceUsd < best.balanceUsd ? w : best));
   }
 
   canPrefundBest(): boolean {
@@ -283,40 +308,38 @@ export class TokenOwnerPoolComponent implements OnInit {
     return `${min}:${rem.toString().padStart(2, '0')}`;
   }
 
-  private runPrefund(walletId?: string): void {
-    const label = walletId
-      ? `Prefund owner wallet ${shortAddress(this.pool().find((w) => w.id === walletId)?.address ?? '')}?`
-      : 'Prefund best pool candidate? This may take several minutes.';
+  private runPrefund(walletId: string): void {
+    const wallet = this.pool().find((w) => w.id === walletId);
+    const label = `Prefund owner wallet ${shortAddress(wallet?.address ?? '')}? This may take several minutes.`;
     if (!confirm(label)) {
       return;
     }
 
-    if (walletId) {
-      this.refreshingBalanceId.set(walletId);
-      this.wallets.getBalance(walletId).subscribe({
-        next: () => {
-          this.refreshingBalanceId.set(null);
-          this.executePrefund(walletId);
-        },
-        error: () => {
-          this.refreshingBalanceId.set(null);
-          this.executePrefund(walletId);
-        },
-      });
-      return;
-    }
-
-    this.executePrefund();
+    this.refreshingBalanceId.set(walletId);
+    this.wallets.getBalance(walletId).subscribe({
+      next: () => {
+        this.refreshingBalanceId.set(null);
+        this.executePrefund(walletId);
+      },
+      error: () => {
+        this.refreshingBalanceId.set(null);
+        this.executePrefund(walletId);
+      },
+    });
   }
 
-  private executePrefund(walletId?: string): void {
+  private executePrefund(walletId: string): void {
     this.prefunding.set(true);
     this.prefundError.set(null);
     this.startPrefundTimer();
 
     this.poolService.prefund({ network: this.network, walletId }).subscribe({
       next: (response) => {
-        this.finishPrefund(response);
+        if (response.alreadyFunded) {
+          this.finishPrefund(response);
+          return;
+        }
+        this.startPrefundBalancePoll(response);
       },
       error: (err) => {
         this.prefunding.set(false);
@@ -326,7 +349,62 @@ export class TokenOwnerPoolComponent implements OnInit {
     });
   }
 
+  private startPrefundBalancePoll(initial: PrefundTokenOwnerResponse): void {
+    this.stopPrefundBalancePoll();
+
+    this.prefundPollTimeout = setTimeout(() => {
+      this.stopPrefundBalancePoll();
+      this.prefunding.set(false);
+      this.stopPrefundTimer();
+      this.prefundError.set('Prefund timed out — funding may still be in progress');
+      this.toast.error('Prefund timed out — check wallet balance or main fee wallet (Treasury)');
+      this.loadPool();
+    }, PREFUND_POLL_TIMEOUT_MS);
+
+    this.prefundPollSub = this.poolService.pollWalletLaunchReady(
+      initial.walletId,
+      (balance) => {
+        if (balance.balanceUsd != null) {
+          this.pool.update((rows) =>
+            rows.map((row) =>
+              row.id === initial.walletId
+                ? {
+                    ...row,
+                    balanceUsd: balance.balanceUsd ?? row.balanceUsd,
+                    isLaunchReady: balance.isLaunchReady ?? row.isLaunchReady,
+                  }
+                : row
+            )
+          );
+        }
+        if (balance.isLaunchReady) {
+          this.stopPrefundBalancePoll();
+          this.finishPrefund({
+            ...initial,
+            balanceUsd: balance.balanceUsd ?? initial.balanceUsd,
+          });
+        }
+      },
+      (err) => {
+        this.stopPrefundBalancePoll();
+        this.prefunding.set(false);
+        this.stopPrefundTimer();
+        this.handlePoolError(err, true);
+      }
+    );
+  }
+
+  private stopPrefundBalancePoll(): void {
+    this.prefundPollSub?.unsubscribe();
+    this.prefundPollSub = undefined;
+    if (this.prefundPollTimeout) {
+      clearTimeout(this.prefundPollTimeout);
+      this.prefundPollTimeout = undefined;
+    }
+  }
+
   private finishPrefund(response: PrefundTokenOwnerResponse): void {
+    this.stopPrefundBalancePoll();
     this.prefunding.set(false);
     this.stopPrefundTimer();
     this.lastPrefundByWalletId.update((map) => ({ ...map, [response.walletId]: response }));
