@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, HostListener, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import {
   AccordionComponent,
@@ -25,8 +26,9 @@ import {
 } from '@coreui/angular';
 import { IconDirective } from '@coreui/icons-angular';
 import { SettingsService } from '../../core/services/settings.service';
+import { TrendSocialService } from '../../core/services/trend-social.service';
 import { ToastService } from '../../shared/services/toast.service';
-import { SettingsResponseDto } from '../../core/models/api.types';
+import { SettingsResponseDto, TrendSocialPoolsSnapshot } from '../../core/models/api.types';
 import { extractErrorMessage } from '../../core/utils/error.util';
 import {
   buildSettingsForm,
@@ -86,6 +88,7 @@ import {
     AccordionItemComponent,
     TemplateIdDirective,
     AlertComponent,
+    RouterLink,
     SettingsFieldGridComponent,
     SettingsPeakWindowsComponent,
     SettingsFundingPairsComponent,
@@ -93,6 +96,7 @@ import {
 })
 export class SettingsComponent implements OnInit {
   private readonly settingsService = inject(SettingsService);
+  private readonly trendSocial = inject(TrendSocialService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
@@ -107,6 +111,9 @@ export class SettingsComponent implements OnInit {
 
   form!: FormGroup;
 
+  socialPoolsMirror = signal<TrendSocialPoolsSnapshot | null>(null);
+  socialPoolsMirrorError = signal(false);
+
   readonly tabs = SETTINGS_TABS;
   readonly generalFields = GENERAL_FIELDS;
   readonly strategySections = this.withSpecialStrategyFields(generateStrategySections());
@@ -120,6 +127,19 @@ export class SettingsComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.loadSocialPoolsMirror();
+  }
+
+  loadSocialPoolsMirror(): void {
+    this.trendSocial.getSocialPools().subscribe({
+      next: (pools) => {
+        this.socialPoolsMirror.set(pools);
+        this.socialPoolsMirrorError.set(false);
+      },
+      error: () => {
+        this.socialPoolsMirrorError.set(true);
+      },
+    });
   }
 
   private withSpecialStrategyFields(sections: SettingsSectionConfig[]): SettingsSectionConfig[] {
@@ -165,6 +185,15 @@ export class SettingsComponent implements OnInit {
           type: 'text',
           col: 12,
           hint: 'gmgn, dexscreener, changenow',
+        });
+      }
+      if (section.path === 'integrations.runtime.xTwitter') {
+        return this.appendField(section, {
+          key: 'profileProviderBaseUrls',
+          label: 'Profile provider base URLs (one per line)',
+          type: 'textarea',
+          col: 12,
+          hint: 'Default: api.fxtwitter.com then api.vxtwitter.com — VxTwitter-only limits symbol typeahead',
         });
       }
       return section;

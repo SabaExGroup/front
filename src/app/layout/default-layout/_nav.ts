@@ -2,10 +2,11 @@ import { INavData } from '@coreui/angular';
 
 export type AppNavItem = INavData & {
   name: string;
-  url: string;
+  url?: string;
+  requireTokenOwnerReuse?: boolean;
 };
 
-export const navItems: INavData[] = [
+export const navItems: AppNavItem[] = [
   {
     name: 'Dashboard',
     url: '/dashboard',
@@ -33,6 +34,17 @@ export const navItems: INavData[] = [
     name: 'Treasury',
     url: '/treasury',
     iconComponent: { name: 'cil-dollar' },
+  },
+  {
+    name: 'Token Owner Pool',
+    url: '/token-owners',
+    iconComponent: { name: 'cilUser' },
+    requireTokenOwnerReuse: true,
+  },
+  {
+    name: 'Social Links',
+    url: '/social-links',
+    iconComponent: { name: 'cilShare' },
   },
   {
     name: 'Settings',

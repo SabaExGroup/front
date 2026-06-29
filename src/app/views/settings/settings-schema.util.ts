@@ -10,11 +10,13 @@ const SPECIAL_KEYS = new Set([
   'networkPriority',
   'chatIds',
   'telegramChatIds',
+  'social',
   'blockedHoursUtc',
   'allowedDestinationAddresses',
   'networks',
   'tokenLabels',
   'providerPriority',
+  'profileProviderBaseUrls',
   /** Shown on General tab as the main system on/off switch */
   'automationEnabled',
   /** docs §۶ — backend does not implement includeMainFeeWallet */
@@ -28,6 +30,7 @@ const SECTION_TITLES: Record<string, string> = {
   'strategy.weights': 'Optimizer Weights',
   'strategy.cycleSchedule': 'Cycle Schedule',
   'strategy.trendFinder': 'Trend Finder',
+  'strategy.trendFinder.social': 'Social Links (pools)',
   'strategy.emergencyBrake': 'Emergency Brake',
   'strategy.distribution': 'Token Distribution',
   'strategy.botCascade': 'Bot Cascade',
@@ -44,6 +47,7 @@ const SECTION_TITLES: Record<string, string> = {
   'integrations.runtime.trade': 'Trade Runtime',
   'integrations.runtime.dexScreener': 'DexScreener Runtime',
   'integrations.runtime.jupiter': 'Jupiter Runtime',
+  'integrations.runtime.xTwitter': 'X / FxTwitter Runtime',
   'integrations.runtime.explorer': 'Explorer Runtime',
   'treasury.replenish': 'Replenish',
 };
@@ -93,6 +97,7 @@ const ENUM_FIELDS: Record<string, { value: string; label: string }[]> = {
 
 const FIELD_HINTS: Record<string, string> = {
   'strategy.profitExtract.sellInRed': 'Never enable in production',
+  'strategy.tokenOwnerReuseEnabled': 'Reuse TOKEN_OWNER wallet across cycles instead of generating a fresh one each time',
   'strategy.emergencyBrake.sellConcurrency': 'Max parallel sell txs during TWAP brake',
   'strategy.emergencyBrake.sellStaggerMsMin': 'Min delay between sell batches (ms)',
   'strategy.emergencyBrake.sellStaggerMsMax': 'Max delay between sell batches (ms)',
@@ -104,6 +109,7 @@ const FIELD_HINTS: Record<string, string> = {
   'strategy.botCascade.tradesPerMinuteMultiplier': 'Multiplier applied to targetTradesPerMinute during cascade',
   'strategy.botCascade.buyBiasBoostPercent': 'Extra buy bias % while cascade is active',
   'strategy.botCascade.pauseSellsSeconds': 'Pause market sells for this many seconds at cascade start',
+  'integrations.runtime.xTwitter.profileProviderBaseUrls': 'FxTwitter then VxTwitter fallback — one URL per line (DevOps)',
   'integrations.mainFeeWalletEvmPrivateKey': 'Must match GET /main-fee-wallet fundingAddress',
   'integrations.runtime.trade.providerPriority': 'gmgn, dexscreener, changenow',
 };

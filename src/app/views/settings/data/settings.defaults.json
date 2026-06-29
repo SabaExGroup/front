@@ -15,6 +15,7 @@
   "trendStyleDefault": "controversial",
   "strategy": {
     "ownerLaunchFundingUsd": 550,
+    "tokenOwnerReuseEnabled": true,
     "mode": "BLITZ",
     "targetPriceChangePercent": 320,
     "targetPriceChangePercentMin": 150,
@@ -110,7 +111,14 @@
       "symbolLookbackDays": 30,
       "logoMaxAttempts": 4,
       "maxIdentityRegenerations": 2,
-      "style": "controversial"
+      "style": "controversial",
+      "social": {
+        "telegramUrlPool": [],
+        "websiteUrlPool": [],
+        "twitterUrlPool": [],
+        "twitterSearchEnabled": true,
+        "twitterMinFollowers": 0
+      }
     },
     "emergencyBrake": {
       "sellMode": "TWAP",
@@ -154,6 +162,7 @@
     "openaiApiKey": "",
     "etherscanApiKey": "",
     "solanaScanApiKey": "",
+    "xBearerToken": "",
     "ethereumRpcUrl": "https://YOUR_ENDPOINT.ethereum-mainnet.quiknode.pro/YOUR_QUICKNODE_TOKEN/",
     "solanaRpcUrl": "https://YOUR_ENDPOINT.solana-mainnet.quiknode.pro/YOUR_QUICKNODE_TOKEN/",
     "solanaRpcWsUrl": "",
@@ -170,7 +179,9 @@
       "dexScreenerBoostsUrl": "https://api.dexscreener.com/token-boosts/top/v1",
       "etherscanBaseUrl": "https://api.etherscan.io/v2/api",
       "solanaScanBaseUrl": "https://pro-api.solscan.io/v2.0",
-      "jupiterQuoteApiUrl": "https://api.jup.ag"
+      "jupiterQuoteApiUrl": "https://api.jup.ag",
+      "fxTwitterBaseUrl": "https://api.fxtwitter.com",
+      "xApiBaseUrl": "https://api.x.com"
     },
     "runtime": {
       "gmgn": {
@@ -337,6 +348,17 @@
         "usdcDecimals": 6,
         "httpTimeoutMs": 30000,
         "httpRetries": 2
+      },
+      "xTwitter": {
+        "httpTimeoutMs": 10000,
+        "httpRetries": 2,
+        "maxDiscoveryUsers": 24,
+        "profileLookupConcurrency": 4,
+        "maxUsernamesPerRequest": 100,
+        "profileProviderBaseUrls": [
+          "https://api.fxtwitter.com",
+          "https://api.vxtwitter.com"
+        ]
       },
       "explorer": {
         "httpTimeoutMs": 10000,

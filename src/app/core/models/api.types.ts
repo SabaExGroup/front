@@ -49,8 +49,13 @@ export interface CycleTokenInfo {
 
 export interface CycleTrendPackage {
   name?: string;
+  symbol?: string;
   logoUrl?: string;
   trendTopic?: string;
+  socialSlug?: string;
+  twitterUrl?: string;
+  telegramUrl?: string;
+  websiteUrl?: string;
 }
 
 export interface CycleMarketSession {
@@ -298,8 +303,10 @@ export interface ListWalletsQuery {
 }
 
 export interface WalletDetailResponseDto extends WalletSummaryDto {
-  cycleId?: string;
+  cycleId?: string | null;
+  tokenId?: string | null;
   createdAt?: string;
+  usageMode?: 'MULTI_USE' | 'SINGLE_USE';
 }
 
 export interface WalletBalanceResponseDto {
@@ -308,6 +315,59 @@ export interface WalletBalanceResponseDto {
   balanceNative: string;
   balanceUsd?: number;
   refreshedAt?: string;
+}
+
+export interface TokenOwnerPoolWallet {
+  id: string;
+  address: string;
+  network: Network;
+  balanceUsd: number;
+  cycleId: string | null;
+  createdAt: string;
+  ageHours: number;
+  isAssignable: boolean;
+}
+
+export interface ListTokenOwnerPoolQuery {
+  network: Network;
+  limit?: number;
+}
+
+export interface CreatePoolTokenOwnerDto {
+  network: Network;
+}
+
+export interface CreatePoolTokenOwnerResponse {
+  id: string;
+  address: string;
+  network: Network;
+  type: 'TOKEN_OWNER';
+  usageMode: 'MULTI_USE' | 'SINGLE_USE';
+  balanceNative: string;
+  balanceUsd: number;
+  isActive: boolean;
+  ageHours: number;
+}
+
+export interface PrefundTokenOwnerRequest {
+  network: Network;
+  walletId?: string;
+  wait?: boolean;
+}
+
+export interface PrefundTokenOwnerResponse {
+  walletId: string;
+  address: string;
+  network: Network;
+  balanceUsd: number;
+  targetUsd: number;
+  topUpSendUsd?: number;
+  shortfallUsd?: number;
+  alreadyFunded: boolean;
+  jobId?: string;
+  poolCycleId?: string;
+  waited?: boolean;
+  ageHours: number;
 }
 
 export interface CycleMarketWalletBalanceRowDto {
@@ -680,6 +740,22 @@ export interface TrendRegenerateDto {
   style?: 'viral' | 'controversial' | 'meme';
 }
 
+export interface TrendSocialPoolsSnapshot {
+  telegramUrlPool: string[];
+  websiteUrlPool: string[];
+  twitterUrlPool: string[];
+  twitterSearchEnabled: boolean;
+  twitterMinFollowers: number;
+}
+
+export interface TrendSocialPoolsUpdateDto {
+  telegramUrlPool?: string[];
+  websiteUrlPool?: string[];
+  twitterUrlPool?: string[];
+  twitterSearchEnabled?: boolean;
+  twitterMinFollowers?: number;
+}
+
 export interface TrendPackageResponseDto {
   id: string;
   cycleId?: string | null;
@@ -688,6 +764,10 @@ export interface TrendPackageResponseDto {
   description: string;
   logoUrl: string;
   trendTopic: string;
+  socialSlug?: string;
+  twitterUrl?: string;
+  telegramUrl?: string;
+  websiteUrl?: string;
   viralAngle?: string;
   controversyLevel?: string;
   hashtags: string[];

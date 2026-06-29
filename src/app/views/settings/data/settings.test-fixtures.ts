@@ -25,6 +25,7 @@ export function buildSettingsApiResponse(
     jupiterApiKey: MASKED_SECRET,
     etherscanApiKey: MASKED_SECRET,
     solanaScanApiKey: MASKED_SECRET,
+    xBearerToken: MASKED_SECRET,
     mainFeeWalletEvmPrivateKey: MASKED_SECRET,
     nativeWithdrawalBscPrivateKey: MASKED_SECRET,
     nativeWithdrawalSolanaPrivateKey: MASKED_SECRET,

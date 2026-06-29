@@ -1,0 +1,23 @@
+.social-pool-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.social-pool-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.social-pool-row input {
+  flex: 1;
+}
+
+.is-invalid-row input {
+  border-color: var(--cui-danger);
+}
+
+.bulk-paste textarea {
+  font-size: 0.8125rem;
+}

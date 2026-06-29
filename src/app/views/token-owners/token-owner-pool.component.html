@@ -1,0 +1,295 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h2 class="mb-1">Token Owner Pool</h2>
+    <p class="text-body-secondary small mb-0">
+      Reusable TOKEN_OWNER wallets — prefund before cycle start for wallet age and launch readiness.
+    </p>
+  </div>
+</div>
+
+@if (loadingSettings()) {
+  <div class="text-center py-4"><c-spinner /></div>
+} @else if (!reuseEnabled() || reuseDisabledError()) {
+  <c-alert color="warning">
+    <strong>TOKEN_OWNER reuse is disabled.</strong>
+  </c-alert>
+  <p class="small text-body-secondary mb-3">
+    Enable <code>strategy.tokenOwnerReuseEnabled</code> in Settings to use the owner pool.
+    Cycles will create single-use owners as before.
+  </p>
+  <a cButton color="primary" size="sm" routerLink="/settings">Open Settings → Strategy</a>
+} @else {
+  <c-card class="mb-4">
+    <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+      <div>
+        <strong>Pool</strong>
+        <div class="small text-body-secondary mt-1">
+          Reuse:
+          <c-badge color="success">ON</c-badge>
+          · Target funding:
+          <strong>{{ targetUsd() | currency }}</strong>
+          · Ready:
+          <strong>{{ readyCount() }}</strong>
+          / {{ pool().length }}
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 align-items-end">
+        <div>
+          <label cLabel class="small mb-1">Network</label>
+          <select
+            cSelect
+            size="sm"
+            [(ngModel)]="network"
+            [disabled]="loading() || prefunding() || creating()"
+            (ngModelChange)="onNetworkChange()"
+          >
+            @for (net of networkOptions; track net) {
+              <option [value]="net">{{ net }}</option>
+            }
+          </select>
+        </div>
+        <button
+          cButton
+          color="light"
+          size="sm"
+          type="button"
+          [disabled]="loading() || prefunding() || creating()"
+          (click)="loadPool()"
+        >
+          @if (loading()) { <c-spinner size="sm" /> } @else { Refresh }
+        </button>
+      </div>
+    </c-card-header>
+    <c-card-body>
+      @if (prefundError(); as err) {
+        <c-alert color="danger" class="mb-3">
+          {{ err }}
+          <div class="mt-2">
+            <a routerLink="/treasury">Open Treasury → main fee wallet</a>
+          </div>
+        </c-alert>
+      }
+
+      @if (prefunding()) {
+        <c-alert color="info" class="mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <c-spinner size="sm" />
+            <div>
+              <strong>Funding in progress…</strong>
+              <div class="small">
+                Waiting for ChangeNOW (synchronous). Elapsed: {{ prefundElapsedLabel() }} — do not close this page.
+              </div>
+            </div>
+          </div>
+        </c-alert>
+      }
+
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <button
+          cButton
+          color="primary"
+          size="sm"
+          type="button"
+          [disabled]="creating() || prefunding() || loading()"
+          (click)="createWallet()"
+        >
+          @if (creating()) { <c-spinner size="sm" /> } @else { + New owner wallet }
+        </button>
+        <button
+          cButton
+          color="success"
+          size="sm"
+          type="button"
+          [disabled]="!canPrefundBest()"
+          (click)="prefundBest()"
+        >
+          @if (prefunding()) { <c-spinner size="sm" /> } @else { Prefund best candidate }
+        </button>
+        <a cButton color="light" size="sm" variant="outline" routerLink="/settings">Settings</a>
+        <a cButton color="light" size="sm" variant="outline" routerLink="/treasury">Main fee wallet</a>
+      </div>
+
+      @if (loading() && pool().length === 0) {
+        <div class="text-center py-4"><c-spinner /></div>
+      } @else if (pool().length === 0) {
+        <p class="text-body-secondary mb-0">
+          Pool is empty for {{ network }}. Create an owner wallet, then prefund it before starting a cycle.
+        </p>
+      } @else {
+        <table cTable hover responsive small>
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Age (h)</th>
+              <th>Balance</th>
+              <th>Target</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (w of pool(); track w.id) {
+              <tr [class.table-active]="expandedWalletId() === w.id">
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-link btn-sm p-0 text-start font-monospace"
+                    [title]="w.address"
+                    (click)="copyAddress(w.address)"
+                  >
+                    {{ shortAddress(w.address) }}
+                  </button>
+                  @if (walletExplorerUrl(w.network, w.address); as explorerUrl) {
+                    <a
+                      class="small ms-1"
+                      [href]="explorerUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      explorer
+                    </a>
+                  }
+                  <button
+                    type="button"
+                    class="btn btn-link btn-sm p-0 ms-1"
+                    (click)="toggleWalletDetail(w)"
+                  >
+                    details
+                  </button>
+                </td>
+                <td>{{ w.ageHours | number: '1.1-1' }}</td>
+                <td>{{ w.balanceUsd | currency }}</td>
+                <td>{{ targetUsd() | currency }}</td>
+                <td>
+                  <c-badge [color]="ownerFundingStatusBadgeColor(walletStatus(w))">
+                    {{ ownerFundingStatusLabel(walletStatus(w)) }}
+                  </c-badge>
+                  @if (walletStatus(w) === 'ready') {
+                    <c-badge color="success" class="ms-1">Launch ready</c-badge>
+                  }
+                  @if (w.cycleId) {
+                    <div class="small text-body-secondary mt-1">Cycle attached</div>
+                  }
+                </td>
+                <td>
+                  <div class="d-flex flex-wrap gap-1">
+                    <button
+                      cButton
+                      color="success"
+                      size="sm"
+                      variant="outline"
+                      type="button"
+                      [disabled]="!canPrefundWallet(w)"
+                      (click)="prefundWallet(w)"
+                    >
+                      Prefund
+                    </button>
+                    <button
+                      cButton
+                      color="light"
+                      size="sm"
+                      type="button"
+                      [disabled]="refreshingBalanceId() === w.id || prefunding()"
+                      (click)="refreshWalletBalance(w)"
+                    >
+                      @if (refreshingBalanceId() === w.id) {
+                        <c-spinner size="sm" />
+                      } @else {
+                        Balance
+                      }
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              @if (expandedWalletId() === w.id) {
+                <tr class="wallet-detail-row">
+                  <td colspan="6">
+                    @if (expandedDetailLoading()) {
+                      <c-spinner size="sm" />
+                    } @else if (expandedDetail(); as detail) {
+                      <dl class="wallet-detail-meta mb-0">
+                        <dt>Full address</dt>
+                        <dd><code class="small">{{ detail.address }}</code></dd>
+                        <dt>Wallet ID</dt>
+                        <dd><code class="small">{{ detail.id }}</code></dd>
+                        <dt>Usage mode</dt>
+                        <dd>{{ detail.usageMode ?? '—' }}</dd>
+                        <dt>Token ID</dt>
+                        <dd>
+                          @if (detail.tokenId) {
+                            <code class="small">{{ detail.tokenId }}</code>
+                          } @else {
+                            —
+                          }
+                        </dd>
+                        <dt>Cycle</dt>
+                        <dd>
+                          @if (detail.cycleId) {
+                            <a [routerLink]="['/cycles', detail.cycleId]">{{ detail.cycleId }}</a>
+                          } @else {
+                            —
+                          }
+                        </dd>
+                        <dt>Created</dt>
+                        <dd>{{ detail.createdAt ? (detail.createdAt | date: 'medium') : '—' }}</dd>
+                        <dt>Pool created</dt>
+                        <dd>{{ w.createdAt | date: 'medium' }}</dd>
+                        @if (lastPrefundForWallet(w.id); as prefund) {
+                          <dt>Last prefund job</dt>
+                          <dd><code class="small">{{ prefund.jobId ?? '—' }}</code></dd>
+                          @if (prefund.alreadyFunded) {
+                            <dt>Prefund result</dt>
+                            <dd><c-badge color="success">Launch ready</c-badge></dd>
+                          }
+                        }
+                      </dl>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      }
+    </c-card-body>
+  </c-card>
+
+  <c-row class="g-4">
+    <c-col md="6">
+      <c-card>
+        <c-card-header><strong>24h prep flow</strong></c-card-header>
+        <c-card-body class="small text-body-secondary">
+          <ol class="mb-0 ps-3">
+            <li>Create or pick an owner from the pool</li>
+            <li>Prefund to reach ≥ 50% of target ({{ targetUsd() * 0.5 | currency }})</li>
+            <li>Wait for wallet age (higher <code>ageHours</code> is better)</li>
+            <li>Start cycle — backend reuses oldest launch-ready owner</li>
+          </ol>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col md="6">
+      <c-card>
+        <c-card-header><strong>Status legend</strong></c-card-header>
+        <c-card-body class="small">
+          <div class="d-flex flex-wrap gap-2 mb-2">
+            <c-badge color="success">Ready</c-badge>
+            <span class="text-body-secondary">Balance ≥ 50% target</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mb-2">
+            <c-badge color="warning">Partial</c-badge>
+            <span class="text-body-secondary">Some balance, below threshold</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mb-2">
+            <c-badge color="danger">Needs prefund</c-badge>
+            <span class="text-body-secondary">Drained owner — age preserved</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <c-badge color="info">In use</c-badge>
+            <span class="text-body-secondary">Attached to an active cycle</span>
+          </div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+}

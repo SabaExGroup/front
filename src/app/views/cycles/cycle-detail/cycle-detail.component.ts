@@ -7,6 +7,7 @@ import { Subscription } from 'rxjs';
 import {
   BadgeComponent,
   ButtonDirective,
+  AlertComponent,
   CardBodyComponent,
   CardComponent,
   CardHeaderComponent,
@@ -35,10 +36,12 @@ import { CyclesService } from '../../../core/services/cycles.service';
 import { WalletsService } from '../../../core/services/wallets.service';
 import { ProfitExtractorService } from '../../../core/services/profit-extractor.service';
 import { CycleOpsService } from '../../../core/services/cycle-ops.service';
+import { TrendSocialService } from '../../../core/services/trend-social.service';
 import { MainFeeWalletService } from '../../../core/services/main-fee-wallet.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import {
   CycleDetailResponseDto,
+  CycleLogEntryDto,
   CycleMarketSessionResponseDto,
   CycleResumeSnapshotResponseDto,
   CycleRetryResponseDto,
@@ -48,6 +51,7 @@ import {
   ProfitExtractorStatusResponseDto,
   TokenLaunchResponseDto,
   TrendPackageResponseDto,
+  TrendSocialPoolsSnapshot,
   WalletBalanceResponseDto,
   WalletSummaryDto,
 } from '../../../core/models/api.types';
@@ -67,6 +71,18 @@ import {
 } from '../../../core/models/enums';
 import { extractErrorMessage } from '../../../core/utils/error.util';
 import { createPollSubscription } from '../../../core/utils/polling.util';
+import { isTokenOwnerLogHighlight } from '../../../core/utils/token-owner-pool.util';
+import {
+  inferTelegramSource,
+  inferTwitterSource,
+  inferWebsiteSource,
+  externalLinkLabel,
+  isPartialSocialBackfillLog,
+  isSocialLogHighlight,
+  socialSourceBadgeColor,
+  socialSourceLabel,
+  SocialSource,
+} from '../../../core/utils/trend-social.util';
 import { ApiService } from '../../../core/http/api.service';
 import { CycleAnalysisTabComponent } from './tabs/cycle-analysis-tab/cycle-analysis-tab.component';
 import { CycleMarketBalancesTabComponent } from './tabs/cycle-market-balances-tab/cycle-market-balances-tab.component';
@@ -89,6 +105,7 @@ type CycleTab = 'overview' | 'wallets' | 'market-balances' | 'profit' | 'analysi
     SpinnerComponent,
     TableDirective,
     BadgeComponent,
+    AlertComponent,
     DatePipe,
     DecimalPipe,
     CurrencyPipe,
@@ -119,6 +136,7 @@ export class CycleDetailComponent implements OnInit {
   private readonly wallets = inject(WalletsService);
   private readonly profit = inject(ProfitExtractorService);
   private readonly ops = inject(CycleOpsService);
+  private readonly trendSocial = inject(TrendSocialService);
   private readonly mainFee = inject(MainFeeWalletService);
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
@@ -172,9 +190,11 @@ export class CycleDetailComponent implements OnInit {
   marketDetail = signal<CycleMarketSessionResponseDto | null>(null);
   lastLaunch = signal<TokenLaunchResponseDto | null>(null);
   lastTrend = signal<TrendPackageResponseDto | null>(null);
+  socialPools = signal<TrendSocialPoolsSnapshot | null>(null);
   opsLaunchpad: Launchpad | '' = '';
   opsLaunchDryRun = false;
   regenerateStyle: 'viral' | 'controversial' | 'meme' | '' = '';
+  regenerateForce = false;
   opsLoading = signal(false);
 
   readonly pipelineSteps = CYCLE_STEPS;
@@ -189,6 +209,7 @@ export class CycleDetailComponent implements OnInit {
   private loadedCycleId = '';
 
   ngOnInit(): void {
+    this.loadSocialPools();
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = params.get('id') ?? '';
       if (id !== this.loadedCycleId) {
@@ -567,10 +588,17 @@ export class CycleDetailComponent implements OnInit {
   }
 
   regenerateTrend(): void {
-    if (!confirm('Regenerate trend package for this cycle?')) return;
+    if (
+      !confirm(
+        'Regenerate trend package? Social links (Twitter, Telegram, Website) will be resolved again and may change.'
+      )
+    ) {
+      return;
+    }
     this.opsLoading.set(true);
     this.ops.regenerateTrend(this.cycleId(), {
       style: this.regenerateStyle || undefined,
+      force: this.regenerateForce || undefined,
     }).subscribe({
       next: (trend) => {
         this.lastTrend.set(trend);
@@ -638,6 +666,73 @@ export class CycleDetailComponent implements OnInit {
     if (status === 'COMPLETED' || status === 'STOPPED') return 'Restart';
     return 'Start';
   }
+
+  ownerActivityLogs(): CycleLogEntryDto[] {
+    return (this.cycle()?.cycleLogs ?? []).filter(isTokenOwnerLogHighlight);
+  }
+
+  socialActivityLogs(): CycleLogEntryDto[] {
+    return (this.cycle()?.cycleLogs ?? []).filter(isSocialLogHighlight);
+  }
+
+  partialSocialBackfillLogs(): CycleLogEntryDto[] {
+    return (this.cycle()?.cycleLogs ?? []).filter(isPartialSocialBackfillLog);
+  }
+
+  isOwnerLogHighlight(log: CycleLogEntryDto): boolean {
+    return isTokenOwnerLogHighlight(log);
+  }
+
+  isSocialLogHighlight(log: CycleLogEntryDto): boolean {
+    return isSocialLogHighlight(log);
+  }
+
+  private loadSocialPools(): void {
+    this.trendSocial.getSocialPools().subscribe({
+      next: (pools) => this.socialPools.set(pools),
+      error: () => undefined,
+    });
+  }
+
+  activeTrendSocial(): {
+    symbol: string;
+    socialSlug?: string;
+    twitterUrl?: string;
+    telegramUrl?: string;
+    websiteUrl?: string;
+  } | null {
+    const trend = this.cycle()?.trendPackage;
+    if (!trend?.symbol) return null;
+    return {
+      symbol: trend.symbol,
+      socialSlug: trend.socialSlug,
+      twitterUrl: trend.twitterUrl,
+      telegramUrl: trend.telegramUrl,
+      websiteUrl: trend.websiteUrl,
+    };
+  }
+
+  twitterSourceFor(url?: string, symbol?: string): SocialSource | null {
+    if (!url || !symbol) return null;
+    const pools = this.socialPools();
+    return inferTwitterSource(url, pools?.twitterUrlPool ?? [], symbol);
+  }
+
+  telegramSourceFor(url?: string, symbol?: string): SocialSource | null {
+    if (!url || !symbol) return null;
+    const pools = this.socialPools();
+    return inferTelegramSource(url, pools?.telegramUrlPool ?? [], symbol);
+  }
+
+  websiteSourceFor(url?: string, symbol?: string): SocialSource | null {
+    if (!url || !symbol) return null;
+    const pools = this.socialPools();
+    return inferWebsiteSource(url, pools?.websiteUrlPool ?? [], symbol);
+  }
+
+  socialSourceLabel = socialSourceLabel;
+  socialSourceBadgeColor = socialSourceBadgeColor;
+  externalLinkLabel = externalLinkLabel;
 
   marketStatusBadgeColor(status: string): string {
     switch (status) {

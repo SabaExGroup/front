@@ -18,6 +18,7 @@ describe('settings-schema.util', () => {
       const keys = sectionFieldKeys(sections);
 
       expect(keys).toContain('strategy.mode');
+      expect(keys).toContain('strategy.tokenOwnerReuseEnabled');
       expect(keys).toContain('strategy.targetTradesPerMinute');
       expect(keys).toContain('strategy.visibility.minHoldBeforeSellSeconds');
       expect(keys).toContain('strategy.visibility.walletFundingStaggerMsMax');

@@ -491,7 +491,7 @@ function formGroupToObject(control: AbstractControl): unknown {
   if (typeof value === 'string' && control.parent instanceof FormGroup) {
     const parentKey = Object.entries(control.parent.controls).find(([, c]) => c === control)?.[0];
 
-    if (parentKey === 'chatIds' || parentKey === 'telegramChatIds' || parentKey === 'allowedDestinationAddresses' || parentKey === 'tokenLabels') {
+    if (parentKey === 'chatIds' || parentKey === 'telegramChatIds' || parentKey === 'allowedDestinationAddresses' || parentKey === 'tokenLabels' || parentKey === 'profileProviderBaseUrls') {
       return value.split('\n').map((s) => s.trim()).filter(Boolean);
     }
     if (parentKey === 'providerPriority') {

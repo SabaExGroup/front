@@ -58,6 +58,7 @@ export const STRATEGY_SECTIONS: SettingsSectionConfig[] = [
     path: 'strategy',
     fields: [
       { key: 'ownerLaunchFundingUsd', label: 'Owner launch funding (USD)', type: 'number', min: 0, col: 4 },
+      { key: 'tokenOwnerReuseEnabled', label: 'Token owner reuse', type: 'boolean', col: 4, hint: 'Reuse TOKEN_OWNER wallet across cycles' },
       { key: 'mode', label: 'Mode', type: 'select', col: 4, options: [{ value: 'BLITZ', label: 'BLITZ' }] },
       { key: 'targetPriceChangePercent', label: 'Target price change %', type: 'number', col: 4 },
       { key: 'targetPriceChangePercentMin', label: 'Min target price change %', type: 'number', col: 4 },
@@ -238,6 +239,13 @@ export const INTEGRATION_KEY_FIELDS: SettingsFieldConfig[] = [
   { key: 'pinataJwt', label: 'Pinata JWT', type: 'text', col: 4 },
   { key: 'etherscanApiKey', label: 'Etherscan API Key', type: 'text', col: 6 },
   { key: 'solanaScanApiKey', label: 'Solscan API Key', type: 'text', col: 6 },
+  {
+    key: 'xBearerToken',
+    label: 'X API Bearer Token (optional)',
+    type: 'text',
+    col: 12,
+    hint: 'Fallback only when FxTwitter auto-search finds no account',
+  },
 ];
 
 export const INTEGRATION_RPC_FIELDS: SettingsFieldConfig[] = [
@@ -260,6 +268,8 @@ export const INTEGRATION_ENDPOINT_FIELDS: SettingsFieldConfig[] = [
   { key: 'etherscanBaseUrl', label: 'Etherscan base URL', type: 'text', col: 6 },
   { key: 'solanaScanBaseUrl', label: 'Solscan base URL', type: 'text', col: 6 },
   { key: 'jupiterQuoteApiUrl', label: 'Jupiter quote API URL', type: 'text', col: 6 },
+  { key: 'fxTwitterBaseUrl', label: 'FxTwitter base URL', type: 'text', col: 6 },
+  { key: 'xApiBaseUrl', label: 'X API base URL', type: 'text', col: 6 },
 ];
 
 export const RUNTIME_SECTIONS: SettingsSectionConfig[] = [

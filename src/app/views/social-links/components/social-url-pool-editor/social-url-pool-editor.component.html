@@ -1,0 +1,70 @@
+<div class="social-pool-editor mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <label cLabel class="mb-0 fw-semibold">{{ label }}</label>
+    <button
+      cButton
+      color="light"
+      size="sm"
+      type="button"
+      [disabled]="disabled"
+      (click)="addRow()"
+    >
+      + Add row
+    </button>
+  </div>
+
+  @if (urls.length === 0) {
+    <p class="small text-body-secondary mb-2">No URLs yet — add a row or paste below.</p>
+  } @else {
+    <div class="social-pool-rows mb-2">
+      @for (url of urls; track $index) {
+        <div class="social-pool-row" [class.is-invalid-row]="rowInvalid(url)">
+          <input
+            cFormControl
+            type="text"
+            class="font-monospace"
+            [value]="url"
+            [placeholder]="placeholder"
+            [disabled]="disabled"
+            (input)="updateRow($index, $any($event.target).value)"
+          />
+          <button
+            cButton
+            color="light"
+            size="sm"
+            type="button"
+            variant="outline"
+            [disabled]="disabled"
+            (click)="removeRow($index)"
+            aria-label="Remove URL"
+          >
+            ×
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <div class="bulk-paste">
+    <label cLabel class="small">Bulk paste (one URL per line)</label>
+    <textarea
+      cFormControl
+      rows="2"
+      class="font-monospace small"
+      [(ngModel)]="bulkPaste"
+      [disabled]="disabled"
+      placeholder="https://t.me/channel&#10;https://x.com/account"
+    ></textarea>
+    <button
+      cButton
+      color="secondary"
+      size="sm"
+      type="button"
+      class="mt-1"
+      [disabled]="disabled || !bulkPaste.trim()"
+      (click)="applyBulkPaste()"
+    >
+      Add pasted URLs
+    </button>
+  </div>
+</div>

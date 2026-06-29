@@ -1,0 +1,209 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h2 class="mb-1">Social Links</h2>
+    <p class="text-body-secondary small mb-0">
+      Manage Twitter, Telegram, and Website URL pools used at token launch metadata.
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <button
+      cButton
+      color="light"
+      size="sm"
+      type="button"
+      [disabled]="loading() || saving()"
+      (click)="load()"
+    >
+      @if (loading()) { <c-spinner size="sm" /> } @else { Refresh }
+    </button>
+    <button
+      cButton
+      color="primary"
+      size="sm"
+      type="button"
+      [disabled]="loading() || saving() || !isDirty()"
+      (click)="save()"
+    >
+      @if (saving()) { <c-spinner size="sm" /> } @else { Save }
+    </button>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="text-center py-4"><c-spinner /></div>
+} @else {
+  @if (poolsEmpty()) {
+    <c-alert color="warning" class="mb-3">
+      <strong>All pools are empty.</strong>
+      With X auto-search enabled, Twitter may still resolve via FxTwitter (then VxTwitter fallback); Telegram and Website will use synthetic fallbacks at launch.
+    </c-alert>
+  }
+
+  @if (!snapshot().twitterSearchEnabled && snapshot().twitterUrlPool.length === 0) {
+    <c-alert color="danger" class="mb-3">
+      X auto-search is <strong>OFF</strong> and the Twitter pool is empty — launches will use synthetic Twitter URLs only.
+    </c-alert>
+  }
+
+  <c-card class="mb-4">
+    <c-card-header><strong>X auto-search</strong></c-card-header>
+    <c-card-body>
+      <c-row class="g-3 align-items-end">
+        <c-col md="6">
+          <c-form-check>
+            <input
+              cFormCheckInput
+              type="checkbox"
+              id="twitter-search-enabled"
+              [checked]="snapshot().twitterSearchEnabled"
+              [disabled]="saving()"
+              (change)="patchFlags({ twitterSearchEnabled: $any($event.target).checked })"
+            />
+            <label cFormCheckLabel for="twitter-search-enabled">
+              Enable automatic X search (FxTwitter → VxTwitter fallback, no API key)
+            </label>
+          </c-form-check>
+          <p class="small text-body-secondary mb-0 mt-1">
+            Searches symbol on X via FxTwitter typeahead; if the datacenter IP is blocked, VxTwitter is tried automatically. Accounts below min followers are skipped → Twitter pool → synthetic.
+          </p>
+        </c-col>
+        <c-col md="4">
+          <label cLabel for="twitter-min-followers">Min followers</label>
+          <input
+            cFormControl
+            id="twitter-min-followers"
+            type="number"
+            min="0"
+            [ngModel]="snapshot().twitterMinFollowers"
+            [disabled]="saving()"
+            (ngModelChange)="patchFlags({ twitterMinFollowers: $event })"
+          />
+        </c-col>
+      </c-row>
+    </c-card-body>
+  </c-card>
+
+  <c-card class="mb-4">
+    <c-card-header class="d-flex justify-content-between align-items-center">
+      <strong>URL pools</strong>
+      <a class="small" routerLink="/settings">Settings → Integrations (X Bearer)</a>
+    </c-card-header>
+    <c-card-body>
+      <app-social-url-pool-editor
+        label="Twitter URLs (fallback pool)"
+        kind="twitter"
+        placeholder="https://x.com/account or @handle"
+        [urls]="snapshot().twitterUrlPool"
+        [invalidUrls]="rowErrors().twitter"
+        [disabled]="saving()"
+        (urlsChange)="updatePool('twitter', $event)"
+      />
+
+      <app-social-url-pool-editor
+        label="Telegram URLs"
+        kind="telegram"
+        placeholder="https://t.me/channel"
+        [urls]="snapshot().telegramUrlPool"
+        [invalidUrls]="rowErrors().telegram"
+        [disabled]="saving()"
+        (urlsChange)="updatePool('telegram', $event)"
+      />
+
+      <app-social-url-pool-editor
+        label="Website URLs"
+        kind="website"
+        placeholder="https://example.com"
+        [urls]="snapshot().websiteUrlPool"
+        [invalidUrls]="rowErrors().website"
+        [disabled]="saving()"
+        (urlsChange)="updatePool('website', $event)"
+      />
+    </c-card-body>
+  </c-card>
+
+  <c-row class="g-4">
+    <c-col md="6">
+      <c-card>
+        <c-card-header><strong>Resolve priority</strong></c-card-header>
+        <c-card-body class="small text-body-secondary">
+          <p class="fw-semibold text-body mb-1">Twitter</p>
+          <ol class="mb-3 ps-3">
+            <li>FxTwitter auto-search (if enabled)</li>
+            <li>VxTwitter fallback (same lookup, no typeahead)</li>
+            <li>X API v2 (if Bearer token set)</li>
+            <li>Random from Twitter pool</li>
+            <li>Synthetic <code>https://x.com/&#123;slug&#125;</code></li>
+          </ol>
+          <p class="fw-semibold text-body mb-1">Telegram / Website</p>
+          <ol class="mb-0 ps-3">
+            <li>Random from operator pool</li>
+            <li>Synthetic fallback from symbol</li>
+          </ol>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col md="6">
+      <c-card>
+        <c-card-header><strong>Notes</strong></c-card-header>
+        <c-card-body class="small text-body-secondary">
+          <ul class="mb-0 ps-3">
+            <li>Same URL may be reused across cycles — no dedup warning.</li>
+            <li>Save replaces the full list per channel (not append).</li>
+            <li>Regenerating a trend resolves social links again.</li>
+            <li>
+              <c-badge color="warning">Synthetic</c-badge> means backend generated a fallback URL.
+            </li>
+          </ul>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <c-card class="mt-4">
+    <c-card-header><strong>FxTwitter / VxTwitter troubleshooting (server)</strong></c-card-header>
+    <c-card-body class="small">
+      <p class="mb-2">
+        <code>https://api.fxtwitter.com</code> is an API endpoint, not a website — an empty browser response is normal.
+      </p>
+      <p class="fw-semibold mb-1">Test from your server:</p>
+      <pre class="bg-body-secondary bg-opacity-10 p-2 rounded mb-3"><code>curl -sS "https://api.fxtwitter.com/elonmusk" | head -c 200
+curl -sS "https://api.vxtwitter.com/elonmusk" | head -c 200</code></pre>
+      <div class="table-responsive">
+        <table cTable small hover class="mb-3">
+          <thead>
+            <tr>
+              <th>Result</th>
+              <th>Likely cause</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>FxTwitter timeout / refused</td>
+              <td>Datacenter IP blocked</td>
+              <td>Deploy latest backend — VxTwitter fallback runs automatically</td>
+            </tr>
+            <tr>
+              <td>Both fail</td>
+              <td>Outbound firewall</td>
+              <td>Enable proxy (<a routerLink="/settings">Settings → proxy</a>)</td>
+            </tr>
+            <tr>
+              <td>Both fail</td>
+              <td>—</td>
+              <td>Fill <code>twitterUrlPool</code> or set <code>xBearerToken</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="mb-1">
+        Provider order is configured under
+        <a routerLink="/settings">Settings → Integrations → Runtime → xTwitter</a>
+        (<code>profileProviderBaseUrls</code>, one URL per line).
+      </p>
+      <p class="text-body-secondary mb-0">
+        VxTwitter-only mode skips broad symbol typeahead — only slug candidates are looked up, then pool / synthetic fallback.
+      </p>
+    </c-card-body>
+  </c-card>
+}

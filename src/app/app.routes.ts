@@ -37,6 +37,16 @@ export const routes: Routes = [
         data: { title: 'Treasury' },
         loadChildren: () => import('./views/treasury/routes').then((m) => m.routes),
       },
+      {
+        path: 'token-owners',
+        data: { title: 'Token Owner Pool' },
+        loadChildren: () => import('./views/token-owners/routes').then((m) => m.routes),
+      },
+      {
+        path: 'social-links',
+        data: { title: 'Social Links' },
+        loadChildren: () => import('./views/social-links/routes').then((m) => m.routes),
+      },
     ],
   },
   {

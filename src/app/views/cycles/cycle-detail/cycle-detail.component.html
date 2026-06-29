@@ -53,15 +53,100 @@
       <c-tab-panel itemKey="overview">
         <c-row class="g-4">
           <c-col lg="8">
+            @if (ownerActivityLogs().length > 0) {
+              <c-card class="mb-4">
+                <c-card-header class="d-flex justify-content-between align-items-center">
+                  <strong>TOKEN_OWNER logs</strong>
+                  <a class="small" routerLink="/token-owners">Token Owner Pool</a>
+                </c-card-header>
+                <c-card-body>
+                  <p class="small text-body-secondary mb-3">Filtered: WALLET_GENERATION · FUNDING (reuse / top-up / prefund)</p>
+                  @for (log of ownerActivityLogs(); track log.at + log.step) {
+                    <div class="timeline-entry timeline-entry--owner">
+                      <div class="fw-semibold">
+                        {{ log.step }}
+                        <c-badge color="success" class="ms-1">OWNER</c-badge>
+                      </div>
+                      <div>{{ log.message }}</div>
+                      <small class="text-body-secondary">{{ log.at | date: 'medium' }}</small>
+                    </div>
+                  }
+                </c-card-body>
+              </c-card>
+            }
+
+            @if (socialActivityLogs().length > 0) {
+              <c-card class="mb-4">
+                <c-card-header class="d-flex justify-content-between align-items-center">
+                  <strong>Social resolution logs</strong>
+                  <a class="small" routerLink="/social-links">Social Links</a>
+                </c-card-header>
+                <c-card-body>
+                  <p class="small text-body-secondary mb-3">Filtered: SOCIAL · TREND_GENERATION · TOKEN_LAUNCH (Twitter / Telegram / Website)</p>
+                  @for (log of socialActivityLogs(); track log.at + log.step) {
+                    <div class="timeline-entry timeline-entry--social">
+                      <div class="fw-semibold">
+                        {{ log.step }}
+                        <c-badge color="primary" class="ms-1">SOCIAL</c-badge>
+                      </div>
+                      <div>{{ log.message }}</div>
+                      <small class="text-body-secondary">{{ log.at | date: 'medium' }}</small>
+                    </div>
+                  }
+                </c-card-body>
+              </c-card>
+            }
+
+            @if (partialSocialBackfillLogs().length > 0) {
+              <c-alert color="info" class="mb-4 small">
+                <strong>Partial social backfill</strong> — launch patched empty trend fields only
+                (@for (log of partialSocialBackfillLogs(); track log.at; let last = $last) {
+                  <span class="d-block mt-1 text-body-secondary">{{ log.message }}</span>
+                })
+              </c-alert>
+            }
+
             <c-card class="mb-4">
-              <c-card-header><strong>Timeline</strong></c-card-header>
+              <c-card-header class="d-flex justify-content-between align-items-center">
+                <strong>Timeline</strong>
+                <div class="d-flex gap-3">
+                  @if (socialActivityLogs().length > 0) {
+                    <a class="small" routerLink="/social-links">Social Links</a>
+                  }
+                  @if (ownerActivityLogs().length > 0) {
+                    <a class="small" routerLink="/token-owners">Token Owner Pool</a>
+                  }
+                </div>
+              </c-card-header>
               <c-card-body>
+                @if (ownerActivityLogs().length > 0) {
+                  <c-alert color="success" class="small mb-3">
+                    <strong>TOKEN_OWNER activity</strong> — reuse / funding events in this cycle.
+                  </c-alert>
+                }
+                @if (socialActivityLogs().length > 0) {
+                  <c-alert color="primary" class="small mb-3">
+                    <strong>Social resolution</strong> — FxTwitter / VxTwitter, pools, and launch backfill events.
+                  </c-alert>
+                }
                 @if (c.cycleLogs.length === 0) {
                   <p class="text-body-secondary mb-0">No logs yet.</p>
                 } @else {
                   @for (log of c.cycleLogs; track log.at + log.step) {
-                    <div class="timeline-entry">
-                      <div class="fw-semibold">{{ log.step }}</div>
+                    <div
+                      class="timeline-entry"
+                      [class.timeline-entry--owner]="isOwnerLogHighlight(log)"
+                      [class.timeline-entry--social]="isSocialLogHighlight(log)"
+                    >
+                      <div class="fw-semibold">
+                        {{ log.step }}
+                        @if (isOwnerLogHighlight(log)) {
+                          <c-badge color="success" class="ms-1">OWNER</c-badge>
+                        }
+                        @if (isSocialLogHighlight(log)) {
+                          <c-badge color="primary" class="ms-1">SOCIAL</c-badge>
+                        }
+                      </div>
                       <div>{{ log.message }}</div>
                       <small class="text-body-secondary">{{ log.at | date: 'medium' }}</small>
                     </div>
@@ -149,15 +234,80 @@
               </c-card>
             }
 
-            @if (c.trendPackage) {
+            @if (c.trendPackage; as trend) {
               <c-card class="mb-4">
-                <c-card-header><strong>Trend package</strong></c-card-header>
+                <c-card-header class="d-flex justify-content-between align-items-center">
+                  <strong>Trend package</strong>
+                  <a class="small" routerLink="/social-links">Social pools</a>
+                </c-card-header>
                 <c-card-body>
                   @if (logoUrl(); as url) {
                     <img [src]="url" alt="logo" class="mb-2 rounded" style="max-width: 64px" />
                   }
-                  <div class="fw-semibold">{{ c.trendPackage.name }}</div>
-                  <div class="small">{{ c.trendPackage.trendTopic }}</div>
+                  <div class="fw-semibold">{{ trend.name }} @if (trend.symbol) { ({{ trend.symbol }}) }</div>
+                  <div class="small mb-3">{{ trend.trendTopic }}</div>
+
+                  @if (trend.twitterUrl && trend.symbol) {
+                    @if (twitterSourceFor(trend.twitterUrl, trend.symbol); as primarySrc) {
+                      <p class="small mb-3">
+                        <span class="text-body-secondary">Primary Twitter source:</span>
+                        <c-badge [color]="socialSourceBadgeColor(primarySrc)" class="ms-1">{{ socialSourceLabel(primarySrc) }}</c-badge>
+                      </p>
+                    }
+                  }
+
+                  @if (trend.socialSlug || trend.twitterUrl || trend.telegramUrl || trend.websiteUrl) {
+                    <dl class="meta-list mb-0">
+                      @if (trend.socialSlug) {
+                        <dt>Slug</dt>
+                        <dd><code class="small">{{ trend.socialSlug }}</code></dd>
+                      }
+                      @if (trend.twitterUrl) {
+                        <dt>Twitter</dt>
+                        <dd>
+                          <a class="external-social-link" [href]="trend.twitterUrl" target="_blank" rel="noopener noreferrer">
+                            {{ externalLinkLabel(trend.twitterUrl) }}
+                            <span class="external-social-link__icon" aria-hidden="true">↗</span>
+                          </a>
+                          @if (twitterSourceFor(trend.twitterUrl, trend.symbol); as src) {
+                            <div class="mt-1">
+                              <c-badge [color]="socialSourceBadgeColor(src)">{{ socialSourceLabel(src) }}</c-badge>
+                            </div>
+                          }
+                        </dd>
+                      }
+                      @if (trend.telegramUrl) {
+                        <dt>Telegram</dt>
+                        <dd>
+                          <a class="external-social-link" [href]="trend.telegramUrl" target="_blank" rel="noopener noreferrer">
+                            {{ externalLinkLabel(trend.telegramUrl) }}
+                            <span class="external-social-link__icon" aria-hidden="true">↗</span>
+                          </a>
+                          @if (telegramSourceFor(trend.telegramUrl, trend.symbol); as src) {
+                            <div class="mt-1">
+                              <c-badge [color]="socialSourceBadgeColor(src)">{{ socialSourceLabel(src) }}</c-badge>
+                            </div>
+                          }
+                        </dd>
+                      }
+                      @if (trend.websiteUrl) {
+                        <dt>Website</dt>
+                        <dd>
+                          <a class="external-social-link" [href]="trend.websiteUrl" target="_blank" rel="noopener noreferrer">
+                            {{ externalLinkLabel(trend.websiteUrl) }}
+                            <span class="external-social-link__icon" aria-hidden="true">↗</span>
+                          </a>
+                          @if (websiteSourceFor(trend.websiteUrl, trend.symbol); as src) {
+                            <div class="mt-1">
+                              <c-badge [color]="socialSourceBadgeColor(src)">{{ socialSourceLabel(src) }}</c-badge>
+                            </div>
+                          }
+                        </dd>
+                      }
+                    </dl>
+                  } @else {
+                    <p class="small text-body-secondary mb-0">Social links not resolved yet.</p>
+                  }
                 </c-card-body>
               </c-card>
             }
@@ -489,6 +639,10 @@
                     <option value="meme">meme</option>
                   </select>
                 </div>
+                <c-form-check class="mb-3">
+                  <input cFormCheckInput type="checkbox" id="regen-force" [(ngModel)]="regenerateForce" />
+                  <label cFormCheckLabel for="regen-force">Force regenerate (replace existing package)</label>
+                </c-form-check>
                 <button cButton color="secondary" size="sm" [disabled]="opsLoading()" (click)="regenerateTrend()">Regenerate trend</button>
               </c-card-body>
             </c-card>
@@ -582,7 +736,38 @@
                 <c-card-header><strong>Last regenerated trend</strong></c-card-header>
                 <c-card-body>
                   <div class="fw-semibold">{{ trend.name }} ({{ trend.symbol }})</div>
-                  <div class="small">{{ trend.trendTopic }}</div>
+                  <div class="small mb-2">{{ trend.trendTopic }}</div>
+                  @if (trend.twitterUrl || trend.telegramUrl || trend.websiteUrl) {
+                    <dl class="meta-list small mb-0">
+                      @if (trend.twitterUrl) {
+                        <dt>Twitter</dt>
+                        <dd>
+                          <a class="external-social-link" [href]="trend.twitterUrl" target="_blank" rel="noopener noreferrer">
+                            {{ externalLinkLabel(trend.twitterUrl) }}
+                            <span class="external-social-link__icon" aria-hidden="true">↗</span>
+                          </a>
+                        </dd>
+                      }
+                      @if (trend.telegramUrl) {
+                        <dt>Telegram</dt>
+                        <dd>
+                          <a class="external-social-link" [href]="trend.telegramUrl" target="_blank" rel="noopener noreferrer">
+                            {{ externalLinkLabel(trend.telegramUrl) }}
+                            <span class="external-social-link__icon" aria-hidden="true">↗</span>
+                          </a>
+                        </dd>
+                      }
+                      @if (trend.websiteUrl) {
+                        <dt>Website</dt>
+                        <dd>
+                          <a class="external-social-link" [href]="trend.websiteUrl" target="_blank" rel="noopener noreferrer">
+                            {{ externalLinkLabel(trend.websiteUrl) }}
+                            <span class="external-social-link__icon" aria-hidden="true">↗</span>
+                          </a>
+                        </dd>
+                      }
+                    </dl>
+                  }
                 </c-card-body>
               </c-card>
             }
