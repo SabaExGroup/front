@@ -1,9 +1,6 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
   <div>
     <h2 class="mb-1">Token Owner Pool</h2>
-    <p class="text-body-secondary small mb-0">
-      Reusable TOKEN_OWNER wallets — prefund before cycle start for wallet age and launch readiness.
-    </p>
   </div>
 </div>
 
@@ -255,20 +252,7 @@
   </c-card>
 
   <c-row class="g-4">
-    <c-col md="6">
-      <c-card>
-        <c-card-header><strong>24h prep flow</strong></c-card-header>
-        <c-card-body class="small text-body-secondary">
-          <ol class="mb-0 ps-3">
-            <li>Create or pick an owner from the pool</li>
-            <li>Prefund to reach ≥ 50% of target ({{ targetUsd() * 0.5 | currency }})</li>
-            <li>Wait for wallet age (higher <code>ageHours</code> is better)</li>
-            <li>Start cycle — backend reuses oldest launch-ready owner</li>
-          </ol>
-        </c-card-body>
-      </c-card>
-    </c-col>
-    <c-col md="6">
+    <c-col md="12">
       <c-card>
         <c-card-header><strong>Status legend</strong></c-card-header>
         <c-card-body class="small">

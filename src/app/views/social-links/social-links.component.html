@@ -86,7 +86,6 @@
   <c-card class="mb-4">
     <c-card-header class="d-flex justify-content-between align-items-center">
       <strong>URL pools</strong>
-      <a class="small" routerLink="/settings">Settings → Integrations (X Bearer)</a>
     </c-card-header>
     <c-card-body>
       <app-social-url-pool-editor
@@ -121,89 +120,4 @@
     </c-card-body>
   </c-card>
 
-  <c-row class="g-4">
-    <c-col md="6">
-      <c-card>
-        <c-card-header><strong>Resolve priority</strong></c-card-header>
-        <c-card-body class="small text-body-secondary">
-          <p class="fw-semibold text-body mb-1">Twitter</p>
-          <ol class="mb-3 ps-3">
-            <li>FxTwitter auto-search (if enabled)</li>
-            <li>VxTwitter fallback (same lookup, no typeahead)</li>
-            <li>X API v2 (if Bearer token set)</li>
-            <li>Random from Twitter pool</li>
-            <li>Synthetic <code>https://x.com/&#123;slug&#125;</code></li>
-          </ol>
-          <p class="fw-semibold text-body mb-1">Telegram / Website</p>
-          <ol class="mb-0 ps-3">
-            <li>Random from operator pool</li>
-            <li>Synthetic fallback from symbol</li>
-          </ol>
-        </c-card-body>
-      </c-card>
-    </c-col>
-    <c-col md="6">
-      <c-card>
-        <c-card-header><strong>Notes</strong></c-card-header>
-        <c-card-body class="small text-body-secondary">
-          <ul class="mb-0 ps-3">
-            <li>Same URL may be reused across cycles — no dedup warning.</li>
-            <li>Save replaces the full list per channel (not append).</li>
-            <li>Regenerating a trend resolves social links again.</li>
-            <li>
-              <c-badge color="warning">Synthetic</c-badge> means backend generated a fallback URL.
-            </li>
-          </ul>
-        </c-card-body>
-      </c-card>
-    </c-col>
-  </c-row>
-
-  <c-card class="mt-4">
-    <c-card-header><strong>FxTwitter / VxTwitter troubleshooting (server)</strong></c-card-header>
-    <c-card-body class="small">
-      <p class="mb-2">
-        <code>https://api.fxtwitter.com</code> is an API endpoint, not a website — an empty browser response is normal.
-      </p>
-      <p class="fw-semibold mb-1">Test from your server:</p>
-      <pre class="bg-body-secondary bg-opacity-10 p-2 rounded mb-3"><code>curl -sS "https://api.fxtwitter.com/elonmusk" | head -c 200
-curl -sS "https://api.vxtwitter.com/elonmusk" | head -c 200</code></pre>
-      <div class="table-responsive">
-        <table cTable small hover class="mb-3">
-          <thead>
-            <tr>
-              <th>Result</th>
-              <th>Likely cause</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>FxTwitter timeout / refused</td>
-              <td>Datacenter IP blocked</td>
-              <td>Deploy latest backend — VxTwitter fallback runs automatically</td>
-            </tr>
-            <tr>
-              <td>Both fail</td>
-              <td>Outbound firewall</td>
-              <td>Enable proxy (<a routerLink="/settings">Settings → proxy</a>)</td>
-            </tr>
-            <tr>
-              <td>Both fail</td>
-              <td>—</td>
-              <td>Fill <code>twitterUrlPool</code> or set <code>xBearerToken</code></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="mb-1">
-        Provider order is configured under
-        <a routerLink="/settings">Settings → Integrations → Runtime → xTwitter</a>
-        (<code>profileProviderBaseUrls</code>, one URL per line).
-      </p>
-      <p class="text-body-secondary mb-0">
-        VxTwitter-only mode skips broad symbol typeahead — only slug candidates are looked up, then pool / synthetic fallback.
-      </p>
-    </c-card-body>
-  </c-card>
 }
