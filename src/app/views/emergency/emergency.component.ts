@@ -41,6 +41,7 @@ import {
   treasuryPhaseBadgeColor,
 } from '../../core/models/enums';
 import { extractErrorMessage, formatApiError } from '../../core/utils/error.util';
+import { GmgnQuickLinkComponent } from '../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
 import {
   confirmUsdcConvertWarnings,
   fundingTotalUsd,
@@ -82,6 +83,7 @@ interface BrakeJobMeta {
     RouterLink,
     DatePipe,
     CurrencyPipe,
+    GmgnQuickLinkComponent,
   ],
 })
 export class EmergencyComponent implements OnInit {

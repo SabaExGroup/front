@@ -230,6 +230,7 @@
                 <c-card-body>
                   <div class="fw-semibold">{{ c.token.name }} ({{ c.token.symbol }})</div>
                   <code class="small d-block text-break mt-1">{{ c.token.address }}</code>
+                  <app-gmgn-link [network]="c.network" [address]="c.token.address" kind="token" />
                 </c-card-body>
               </c-card>
             }
@@ -443,7 +444,10 @@
                           (change)="toggleWalletSelection(w.id, $any($event.target).checked)"
                         />
                       </td>
-                      <td><code class="small">{{ w.address }}</code></td>
+                      <td>
+                        <code class="small">{{ w.address }}</code>
+                        <app-gmgn-link [network]="w.network" [address]="w.address" kind="wallet" />
+                      </td>
                       <td>{{ w.network }}</td>
                       <td>{{ w.type }}</td>
                       <td>{{ w.balanceNative ?? '—' }}</td>
@@ -524,7 +528,11 @@
                   } @else {
                     <dl class="meta-list">
                       @if (ps.tokenAddress) {
-                        <dt>Token</dt><dd><code class="small">{{ ps.tokenAddress }}</code></dd>
+                        <dt>Token</dt>
+                        <dd>
+                          <code class="small">{{ ps.tokenAddress }}</code>
+                          <app-gmgn-link [network]="c.network" [address]="ps.tokenAddress" kind="token" />
+                        </dd>
                       }
                       <dt>Held / max</dt>
                       <dd>{{ ps.heldPercent | number: '1.1-1' }}% / {{ ps.maxPercent }}%</dd>
@@ -684,7 +692,11 @@
                 </c-row>
                 <button cButton color="primary" size="sm" [disabled]="opsLoading()" (click)="launchToken()">Launch</button>
                 @if (lastLaunch(); as launch) {
-                  <div class="small mt-2"><code>{{ launch.address }}</code> · {{ launch.txHash }}</div>
+                  <div class="small mt-2">
+                    <code>{{ launch.address }}</code>
+                    <app-gmgn-link [network]="c.network" [address]="launch.address" kind="token" />
+                    · {{ launch.txHash }}
+                  </div>
                 }
               </c-card-body>
             </c-card>

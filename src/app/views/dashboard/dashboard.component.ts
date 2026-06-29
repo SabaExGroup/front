@@ -21,6 +21,7 @@ import {
   SpinnerComponent,
   TableDirective,
 } from '@coreui/angular';
+import { GmgnQuickLinkComponent } from '../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
 import { CycleStatusBadgeComponent } from '../../shared/components/cycle-status-badge/cycle-status-badge.component';
 import { HealthService, IntegrationsService } from '../../core/services/health.service';
 import { EmergencyService } from '../../core/services/emergency.service';
@@ -71,6 +72,7 @@ import {
     DatePipe,
     DecimalPipe,
     UpperCasePipe,
+    GmgnQuickLinkComponent,
   ],
 })
 export class DashboardComponent implements OnInit {

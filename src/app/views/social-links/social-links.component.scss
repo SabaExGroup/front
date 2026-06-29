@@ -1,0 +1,24 @@
+.social-tab-nav {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  background: var(--cui-body-bg);
+  padding-top: 0.25rem;
+  border-bottom: 1px solid var(--cui-border-color);
+}
+
+.social-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.social-stat__label {
+  font-size: 0.8125rem;
+  color: var(--cui-secondary-color);
+}
+
+.tab-count {
+  font-size: 0.7rem;
+  vertical-align: middle;
+}

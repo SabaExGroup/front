@@ -44,6 +44,7 @@ import {
   WalletPoolStrategy,
 } from '../../core/models/enums';
 import { formatApiError, extractErrorMessage } from '../../core/utils/error.util';
+import { GmgnQuickLinkComponent } from '../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
 import {
   confirmUsdcConvertWarnings,
   fundingTotalUsd,
@@ -87,6 +88,7 @@ type LifecycleJobSource = 'drain' | 'rearm' | 'lifecycle';
     CurrencyPipe,
     KeyValuePipe,
     NgTemplateOutlet,
+    GmgnQuickLinkComponent,
   ],
 })
 export class TreasuryComponent implements OnInit {

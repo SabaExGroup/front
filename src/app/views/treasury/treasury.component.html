@@ -14,7 +14,10 @@
         <c-card-body>
           <dl class="job-meta mb-0">
             <dt>Funding address</dt>
-            <dd><code class="small">{{ w.fundingAddress }}</code></dd>
+            <dd>
+              <code class="small">{{ w.fundingAddress }}</code>
+              <app-gmgn-link network="ETHEREUM" [address]="w.fundingAddress" kind="wallet" />
+            </dd>
             <dt>USDC / ETH</dt>
             <dd>{{ w.balanceUsdc }} / {{ w.balanceEth }}</dd>
             <dt>Funding USD</dt>
@@ -29,9 +32,15 @@
         <c-card-body>
           <dl class="job-meta mb-0">
             <dt>Solana</dt>
-            <dd><code class="small">{{ withdrawalSolanaAddress(w) }}</code></dd>
+            <dd>
+              <code class="small">{{ withdrawalSolanaAddress(w) }}</code>
+              <app-gmgn-link network="SOLANA" [address]="withdrawalSolanaAddress(w)" kind="wallet" />
+            </dd>
             <dt>BSC</dt>
-            <dd><code class="small">{{ w.nativeWithdrawalBscAddress }}</code></dd>
+            <dd>
+              <code class="small">{{ w.nativeWithdrawalBscAddress }}</code>
+              <app-gmgn-link network="BSC" [address]="w.nativeWithdrawalBscAddress" kind="wallet" />
+            </dd>
             <dt>SOL / BNB</dt>
             <dd>{{ w.balanceSol }} / {{ w.balanceBnb }}</dd>
             <dt>Withdrawal USD</dt>
@@ -559,7 +568,11 @@
           <dt>Destinations</dt>
           <dd>
             @for (entry of job.destinations | keyvalue; track entry.key) {
-              <div><strong>{{ entry.key }}:</strong> <code class="small">{{ entry.value }}</code></div>
+              <div>
+                <strong>{{ entry.key }}:</strong>
+                <code class="small">{{ entry.value }}</code>
+                <app-gmgn-link [network]="$any(entry.key)" [address]="$any(entry.value)" kind="wallet" />
+              </div>
             }
           </dd>
         }

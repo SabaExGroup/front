@@ -24,6 +24,7 @@ import {
   CycleMarketWalletBalancesResponseDto,
 } from '../../../../../core/models/api.types';
 import { ToastService } from '../../../../../shared/services/toast.service';
+import { GmgnQuickLinkComponent } from '../../../../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
 import { extractErrorMessage } from '../../../../../core/utils/error.util';
 
 @Component({
@@ -42,6 +43,7 @@ import { extractErrorMessage } from '../../../../../core/utils/error.util';
     TableDirective,
     DatePipe,
     CurrencyPipe,
+    GmgnQuickLinkComponent,
   ],
 })
 export class CycleMarketBalancesTabComponent {

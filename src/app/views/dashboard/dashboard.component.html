@@ -320,7 +320,11 @@
               <c-col lg="6" class="mb-3">
                 <h6>Funding (rearm)</h6>
                 <dl class="meta-list mb-0">
-                  <dt>Funding address</dt><dd><code class="small">{{ w.fundingAddress }}</code></dd>
+                  <dt>Funding address</dt>
+                  <dd>
+                    <code class="small">{{ w.fundingAddress }}</code>
+                    <app-gmgn-link network="ETHEREUM" [address]="w.fundingAddress" kind="wallet" />
+                  </dd>
                   <dt>USDC</dt><dd>{{ w.balanceUsdc }}</dd>
                   <dt>ETH</dt><dd>{{ w.balanceEth }}</dd>
                   <dt>Funding USD</dt><dd class="fw-semibold">{{ fundingTotalUsd(w) | currency }}</dd>
@@ -330,8 +334,16 @@
               <c-col lg="6" class="mb-3">
                 <h6>Withdrawal (profit)</h6>
                 <dl class="meta-list mb-0">
-                  <dt>Solana withdrawal</dt><dd><code class="small">{{ withdrawalSolanaAddress(w) }}</code></dd>
-                  <dt>BSC withdrawal</dt><dd><code class="small">{{ w.nativeWithdrawalBscAddress }}</code></dd>
+                  <dt>Solana withdrawal</dt>
+                  <dd>
+                    <code class="small">{{ withdrawalSolanaAddress(w) }}</code>
+                    <app-gmgn-link network="SOLANA" [address]="withdrawalSolanaAddress(w)" kind="wallet" />
+                  </dd>
+                  <dt>BSC withdrawal</dt>
+                  <dd>
+                    <code class="small">{{ w.nativeWithdrawalBscAddress }}</code>
+                    <app-gmgn-link network="BSC" [address]="w.nativeWithdrawalBscAddress" kind="wallet" />
+                  </dd>
                   <dt>SOL</dt><dd>{{ w.balanceSol }}</dd>
                   <dt>BNB</dt><dd>{{ w.balanceBnb }}</dd>
                   <dt>Withdrawal USD</dt><dd class="fw-semibold">{{ w.withdrawalTotalUsd | currency }}</dd>

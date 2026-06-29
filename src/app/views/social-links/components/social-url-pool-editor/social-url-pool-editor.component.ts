@@ -1,57 +1,79 @@
-import { Component, Input, output } from '@angular/core';
+import { Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   ButtonDirective,
   FormControlDirective,
   FormLabelDirective,
+  TableDirective,
 } from '@coreui/angular';
-import { SocialUrlKind } from '../../../../core/utils/trend-social.util';
+import { SocialUrlKind, expandUrlPoolValue, splitUrlPoolText } from '../../../../core/utils/trend-social.util';
 
 @Component({
   selector: 'app-social-url-pool-editor',
   templateUrl: './social-url-pool-editor.component.html',
   styleUrls: ['./social-url-pool-editor.component.scss'],
-  imports: [FormsModule, ButtonDirective, FormControlDirective, FormLabelDirective],
+  imports: [FormsModule, ButtonDirective, FormControlDirective, FormLabelDirective, TableDirective],
 })
 export class SocialUrlPoolEditorComponent {
-  @Input({ required: true }) label!: string;
-  @Input({ required: true }) kind!: SocialUrlKind;
-  @Input({ required: true }) urls: string[] = [];
-  @Input() invalidUrls: string[] = [];
-  @Input() disabled = false;
-  @Input() placeholder = 'https://...';
+  label = input('');
+  showLabel = input(true);
+  kind = input.required<SocialUrlKind>();
+  urls = input<string[]>([]);
+  /** Bumped by parent only after load/save — avoids wiping in-progress edits when another pool changes. */
+  resetKey = input(0);
+  invalidUrls = input<string[]>([]);
+  disabled = input(false);
+  placeholder = input('https://...');
 
   urlsChange = output<string[]>();
 
+  readonly rows = signal<string[]>([]);
   bulkPaste = '';
 
+  constructor() {
+    effect(() => {
+      this.resetKey();
+      this.rows.set([...(this.urls() ?? [])]);
+    });
+  }
+
+  rowCount(): number {
+    return this.rows().filter((url) => url.trim()).length;
+  }
+
   rowInvalid(url: string): boolean {
-    return this.invalidUrls.some((u) => u.trim() === url.trim());
+    return this.invalidUrls().some((u) => u.trim() === url.trim());
   }
 
   updateRow(index: number, value: string): void {
-    const next = [...this.urls];
-    next[index] = value;
-    this.urlsChange.emit(next);
+    this.rows.update((current) => {
+      const next = [...current];
+      next[index] = value;
+      return next;
+    });
+  }
+
+  commitRows(): void {
+    this.urlsChange.emit(expandUrlPoolValue(this.rows()));
   }
 
   addRow(): void {
-    this.urlsChange.emit([...this.urls, '']);
+    this.rows.update((current) => [...current, '']);
+    this.commitRows();
   }
 
   removeRow(index: number): void {
-    const next = this.urls.filter((_, i) => i !== index);
-    this.urlsChange.emit(next);
+    this.rows.update((current) => current.filter((_, i) => i !== index));
+    this.commitRows();
   }
 
   applyBulkPaste(): void {
-    const lines = this.bulkPaste
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
+    const lines = splitUrlPoolText(this.bulkPaste);
     if (lines.length === 0) return;
-    const existing = this.urls.map((u) => u.trim()).filter(Boolean);
-    this.urlsChange.emit([...existing, ...lines]);
+
+    const existing = expandUrlPoolValue(this.rows());
+    this.rows.set([...existing, ...lines]);
     this.bulkPaste = '';
+    this.commitRows();
   }
 }

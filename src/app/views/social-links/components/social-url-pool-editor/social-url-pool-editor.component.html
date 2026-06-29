@@ -1,70 +1,97 @@
-<div class="social-pool-editor mb-4">
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-    <label cLabel class="mb-0 fw-semibold">{{ label }}</label>
-    <button
-      cButton
-      color="light"
-      size="sm"
-      type="button"
-      [disabled]="disabled"
-      (click)="addRow()"
-    >
-      + Add row
-    </button>
+<div class="social-pool-editor">
+  <div class="social-pool-toolbar">
+    @if (showLabel()) {
+      <label cLabel class="mb-0 fw-semibold">{{ label() }}</label>
+    }
+    <div class="social-pool-toolbar__actions">
+      <span class="small text-body-secondary">{{ rowCount() }} URL(s)</span>
+      <button
+        cButton
+        color="primary"
+        size="sm"
+        variant="outline"
+        type="button"
+        [disabled]="disabled()"
+        (click)="addRow()"
+      >
+        + Add row
+      </button>
+    </div>
   </div>
 
-  @if (urls.length === 0) {
-    <p class="small text-body-secondary mb-2">No URLs yet — add a row or paste below.</p>
+  @if (rows().length === 0) {
+    <div class="social-pool-empty">
+      <p class="text-body-secondary mb-0">No URLs yet — add a row or paste a list below.</p>
+    </div>
   } @else {
-    <div class="social-pool-rows mb-2">
-      @for (url of urls; track $index) {
-        <div class="social-pool-row" [class.is-invalid-row]="rowInvalid(url)">
-          <input
-            cFormControl
-            type="text"
-            class="font-monospace"
-            [value]="url"
-            [placeholder]="placeholder"
-            [disabled]="disabled"
-            (input)="updateRow($index, $any($event.target).value)"
-          />
-          <button
-            cButton
-            color="light"
-            size="sm"
-            type="button"
-            variant="outline"
-            [disabled]="disabled"
-            (click)="removeRow($index)"
-            aria-label="Remove URL"
-          >
-            ×
-          </button>
-        </div>
-      }
+    <div class="social-pool-table-wrap">
+      <table cTable hover small responsive class="social-pool-table mb-0">
+        <thead>
+          <tr>
+            <th class="col-index">#</th>
+            <th>URL</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (url of rows(); track $index) {
+            <tr [class.table-danger]="rowInvalid(url)">
+              <td class="text-body-secondary">{{ $index + 1 }}</td>
+              <td>
+                <input
+                  cFormControl
+                  type="text"
+                  class="font-monospace social-pool-input"
+                  [ngModel]="url"
+                  [placeholder]="placeholder()"
+                  [disabled]="disabled()"
+                  (ngModelChange)="updateRow($index, $event)"
+                  (blur)="commitRows()"
+                />
+              </td>
+              <td class="text-end">
+                <button
+                  cButton
+                  color="light"
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  [disabled]="disabled()"
+                  (click)="removeRow($index)"
+                  aria-label="Remove URL"
+                >
+                  Remove
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
   }
 
-  <div class="bulk-paste">
-    <label cLabel class="small">Bulk paste (one URL per line)</label>
+  <div class="social-pool-bulk">
+    <label cLabel class="small fw-semibold">Bulk paste</label>
+    <p class="small text-body-secondary mb-2">One URL per line (comma or semicolon also works).</p>
     <textarea
       cFormControl
-      rows="2"
+      rows="5"
       class="font-monospace small"
       [(ngModel)]="bulkPaste"
-      [disabled]="disabled"
-      placeholder="https://t.me/channel&#10;https://x.com/account"
+      [disabled]="disabled()"
+      placeholder="https://t.me/channel&#10;https://x.com/account&#10;https://example.com"
     ></textarea>
-    <button
-      cButton
-      color="secondary"
-      size="sm"
-      type="button"
-      class="mt-1"
-      [disabled]="disabled || !bulkPaste.trim()"
-      (click)="applyBulkPaste()"
-    >
-      Add pasted URLs
-    </button>
+    <div class="d-flex justify-content-end mt-2">
+      <button
+        cButton
+        color="secondary"
+        size="sm"
+        type="button"
+        [disabled]="disabled() || !bulkPaste.trim()"
+        (click)="applyBulkPaste()"
+      >
+        Add pasted URLs
+      </button>
+    </div>
   </div>
 </div>

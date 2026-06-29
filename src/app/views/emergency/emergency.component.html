@@ -14,13 +14,22 @@
         <c-card-header><strong>Withdrawal destinations</strong></c-card-header>
         <c-card-body>
           <p class="small text-body-secondary mb-2">
-            Brake sweeps to these addresses — never to the funding wallet (<code>{{ w.fundingAddress }}</code>).
+            Brake sweeps to these addresses — never to the funding wallet
+            (<code>{{ w.fundingAddress }}</code><app-gmgn-link network="ETHEREUM" [address]="w.fundingAddress" kind="wallet" />).
           </p>
           <dl class="job-meta mb-0">
             <dt>Solana</dt>
-            <dd><code>{{ withdrawalSolanaAddress(w) }}</code> · {{ w.balanceSol }} SOL</dd>
+            <dd>
+              <code>{{ withdrawalSolanaAddress(w) }}</code>
+              <app-gmgn-link network="SOLANA" [address]="withdrawalSolanaAddress(w)" kind="wallet" />
+              · {{ w.balanceSol }} SOL
+            </dd>
             <dt>BSC</dt>
-            <dd><code>{{ w.nativeWithdrawalBscAddress }}</code> · {{ w.balanceBnb }} BNB</dd>
+            <dd>
+              <code>{{ w.nativeWithdrawalBscAddress }}</code>
+              <app-gmgn-link network="BSC" [address]="w.nativeWithdrawalBscAddress" kind="wallet" />
+              · {{ w.balanceBnb }} BNB
+            </dd>
             <dt>Withdrawal USD (approx)</dt>
             <dd>{{ w.withdrawalTotalUsd | currency }}</dd>
           </dl>

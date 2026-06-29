@@ -31,6 +31,7 @@ import {
   TabsListComponent,
   TableDirective,
 } from '@coreui/angular';
+import { GmgnQuickLinkComponent } from '../../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
 import { CycleStatusBadgeComponent } from '../../../shared/components/cycle-status-badge/cycle-status-badge.component';
 import { CyclesService } from '../../../core/services/cycles.service';
 import { WalletsService } from '../../../core/services/wallets.service';
@@ -127,6 +128,7 @@ type CycleTab = 'overview' | 'wallets' | 'market-balances' | 'profit' | 'analysi
     TabsListComponent,
     CycleAnalysisTabComponent,
     CycleMarketBalancesTabComponent,
+    GmgnQuickLinkComponent,
   ],
 })
 export class CycleDetailComponent implements OnInit {

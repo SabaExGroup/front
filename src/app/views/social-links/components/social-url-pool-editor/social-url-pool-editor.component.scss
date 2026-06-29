@@ -1,23 +1,77 @@
-.social-pool-rows {
+.social-pool-editor {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.social-pool-row {
+.social-pool-toolbar {
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
+  gap: 0.75rem;
 }
 
-.social-pool-row input {
-  flex: 1;
+.social-pool-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
 }
 
-.is-invalid-row input {
-  border-color: var(--cui-danger);
+.social-pool-empty {
+  padding: 1.25rem;
+  border: 1px dashed var(--cui-border-color);
+  border-radius: var(--cui-border-radius, 0.375rem);
+  background: var(--cui-tertiary-bg);
+  text-align: center;
 }
 
-.bulk-paste textarea {
+.social-pool-table-wrap {
+  max-height: 28rem;
+  overflow: auto;
+  border: 1px solid var(--cui-border-color);
+  border-radius: var(--cui-border-radius, 0.375rem);
+}
+
+.social-pool-table {
+  margin-bottom: 0;
+}
+
+.social-pool-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--cui-tertiary-bg);
+  border-bottom-width: 1px;
+}
+
+.col-index {
+  width: 3rem;
+}
+
+.col-actions {
+  width: 6rem;
+  white-space: nowrap;
+}
+
+.social-pool-input {
   font-size: 0.8125rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.social-pool-input:focus {
+  box-shadow: none;
+  background: var(--cui-body-bg);
+}
+
+.social-pool-bulk {
+  padding: 1rem;
+  border: 1px solid var(--cui-border-color);
+  border-radius: var(--cui-border-radius, 0.375rem);
+  background: var(--cui-tertiary-bg);
 }

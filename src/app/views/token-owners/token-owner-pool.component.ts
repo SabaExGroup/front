@@ -16,6 +16,7 @@ import {
   SpinnerComponent,
   TableDirective,
 } from '@coreui/angular';
+import { GmgnQuickLinkComponent } from '../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
 import { TokenOwnerPoolService } from '../../core/services/token-owner-pool.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { WalletsService } from '../../core/services/wallets.service';
@@ -63,6 +64,7 @@ import {
     DatePipe,
     CurrencyPipe,
     DecimalPipe,
+    GmgnQuickLinkComponent,
   ],
 })
 export class TokenOwnerPoolComponent implements OnInit {

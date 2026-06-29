@@ -77,7 +77,10 @@
           <tbody>
             @for (w of mb.wallets; track w.id) {
               <tr [class.table-warning]="w.syncError">
-                <td><code class="small">{{ w.address }}</code></td>
+                <td>
+                  <code class="small">{{ w.address }}</code>
+                  <app-gmgn-link [network]="mb.network" [address]="w.address" kind="wallet" />
+                </td>
                 <td>{{ w.balanceNative }}</td>
                 <td>{{ w.balanceUsd | currency }}</td>
                 <td>{{ w.isActive ? 'Yes' : 'No' }}</td>

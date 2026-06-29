@@ -2,7 +2,7 @@
   <div>
     <h2 class="mb-1">Social Links</h2>
     <p class="text-body-secondary small mb-0">
-      Manage Twitter, Telegram, and Website URL pools used at token launch metadata.
+      URL pools for token launch metadata — Twitter, Telegram, Website.
     </p>
   </div>
   <div class="d-flex gap-2">
@@ -24,99 +24,186 @@
       [disabled]="loading() || saving() || !isDirty()"
       (click)="save()"
     >
-      @if (saving()) { <c-spinner size="sm" /> } @else { Save }
+      @if (saving()) { <c-spinner size="sm" /> } @else { Save all pools }
     </button>
   </div>
 </div>
 
 @if (loading()) {
-  <div class="text-center py-4"><c-spinner /></div>
+  <div class="text-center py-5"><c-spinner /></div>
 } @else {
+  @if (saveError(); as err) {
+    <c-alert color="danger" class="mb-3 small">
+      <strong>Save failed.</strong> {{ err }}
+    </c-alert>
+  }
+
+  <c-card class="mb-4">
+    <c-card-body class="py-3">
+      <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="social-stat">
+          <span class="social-stat__label">Twitter</span>
+          <c-badge color="info">{{ snapshot().twitterUrlPool.length }}</c-badge>
+        </div>
+        <div class="social-stat">
+          <span class="social-stat__label">Telegram</span>
+          <c-badge color="info">{{ snapshot().telegramUrlPool.length }}</c-badge>
+        </div>
+        <div class="social-stat">
+          <span class="social-stat__label">Website</span>
+          <c-badge color="info">{{ snapshot().websiteUrlPool.length }}</c-badge>
+        </div>
+        <div class="social-stat">
+          <span class="social-stat__label">X auto-search</span>
+          <c-badge [color]="snapshot().twitterSearchEnabled ? 'success' : 'secondary'">
+            {{ snapshot().twitterSearchEnabled ? 'On' : 'Off' }}
+          </c-badge>
+        </div>
+        @if (isDirty()) {
+          <span class="small text-warning ms-auto">Unsaved changes</span>
+        }
+      </div>
+    </c-card-body>
+  </c-card>
+
   @if (poolsEmpty()) {
     <c-alert color="warning" class="mb-3">
-      <strong>All pools are empty.</strong>
+      <strong>All pools are empty.</strong> Add URLs in the tabs below or enable X auto-search for Twitter fallback.
     </c-alert>
   }
 
-  @if (!snapshot().twitterSearchEnabled && snapshot().twitterUrlPool.length === 0) {
-    <c-alert color="danger" class="mb-3">
-      X auto-search is <strong>OFF</strong> and the Twitter pool is empty — launches will use synthetic Twitter URLs only.
-    </c-alert>
-  }
+  <c-tabs [activeItemKey]="activeTab()" (activeItemKeyChange)="onTabChange($event)">
+    <c-tabs-list variant="tabs" class="social-tab-nav mb-4">
+      @for (tab of tabs; track tab.id) {
+        <button cTab [itemKey]="tab.id" type="button">
+          <svg cIcon [name]="tab.icon" size="sm" class="me-1"></svg>
+          {{ tab.label }}
+          <c-badge color="secondary" class="ms-2 tab-count">{{ poolCount(tab.id) }}</c-badge>
+        </button>
+      }
+    </c-tabs-list>
 
-  <c-card class="mb-4">
-    <c-card-header><strong>X auto-search</strong></c-card-header>
-    <c-card-body>
-      <c-row class="g-3 align-items-end">
-        <c-col md="6">
-          <c-form-check>
-            <input
-              cFormCheckInput
-              type="checkbox"
-              id="twitter-search-enabled"
-              [checked]="snapshot().twitterSearchEnabled"
+    <c-tabs-content>
+      <c-tab-panel itemKey="twitter">
+        @if (!snapshot().twitterSearchEnabled && snapshot().twitterUrlPool.length === 0) {
+          <c-alert color="danger" class="mb-3">
+            X auto-search is <strong>OFF</strong> and the Twitter pool is empty — launches will use synthetic Twitter URLs only.
+          </c-alert>
+        }
+
+        <c-card class="mb-4">
+          <c-card-header class="d-flex justify-content-between align-items-center">
+            <strong>X auto-search</strong>
+            <a class="small" routerLink="/settings">Settings → Integrations (X Bearer)</a>
+          </c-card-header>
+          <c-card-body>
+            <c-row class="g-3 align-items-end">
+              <c-col lg="7">
+                <c-form-check>
+                  <input
+                    cFormCheckInput
+                    type="checkbox"
+                    id="twitter-search-enabled"
+                    [checked]="snapshot().twitterSearchEnabled"
+                    [disabled]="saving()"
+                    (change)="patchFlags({ twitterSearchEnabled: $any($event.target).checked })"
+                  />
+                  <label cFormCheckLabel for="twitter-search-enabled">
+                    Enable automatic X search (FxTwitter → VxTwitter fallback)
+                  </label>
+                </c-form-check>
+                <p class="small text-body-secondary mb-0 mt-2">
+                  Symbol typeahead via FxTwitter; VxTwitter fallback if datacenter IP is blocked.
+                  Accounts below min followers are skipped → pool → synthetic URL.
+                </p>
+              </c-col>
+              <c-col lg="3">
+                <label cLabel for="twitter-min-followers">Min followers</label>
+                <input
+                  cFormControl
+                  id="twitter-min-followers"
+                  type="number"
+                  min="0"
+                  [ngModel]="snapshot().twitterMinFollowers"
+                  [disabled]="saving()"
+                  (ngModelChange)="patchFlags({ twitterMinFollowers: $event })"
+                />
+              </c-col>
+            </c-row>
+          </c-card-body>
+        </c-card>
+
+        <c-card>
+          <c-card-header><strong>Twitter URL pool</strong></c-card-header>
+          <c-card-body>
+            <p class="small text-body-secondary mb-3">
+              Fallback when auto-search finds no account. One URL per row — profile URL or <code>@handle</code>.
+            </p>
+            <app-social-url-pool-editor
+              kind="twitter"
+              placeholder="https://x.com/account or @handle"
+              [showLabel]="false"
+              [resetKey]="poolResetKey()"
+              [urls]="snapshot().twitterUrlPool"
+              [invalidUrls]="rowErrors().twitter"
               [disabled]="saving()"
-              (change)="patchFlags({ twitterSearchEnabled: $any($event.target).checked })"
+              (urlsChange)="updatePool('twitter', $event)"
             />
-            <label cFormCheckLabel for="twitter-search-enabled">
-              Enable automatic X search (FxTwitter → VxTwitter fallback, no API key)
-            </label>
-          </c-form-check>
-          <p class="small text-body-secondary mb-0 mt-1">
-            Searches symbol on X via FxTwitter typeahead; if the datacenter IP is blocked, VxTwitter is tried automatically. Accounts below min followers are skipped → Twitter pool → synthetic.
-          </p>
-        </c-col>
-        <c-col md="4">
-          <label cLabel for="twitter-min-followers">Min followers</label>
-          <input
-            cFormControl
-            id="twitter-min-followers"
-            type="number"
-            min="0"
-            [ngModel]="snapshot().twitterMinFollowers"
-            [disabled]="saving()"
-            (ngModelChange)="patchFlags({ twitterMinFollowers: $event })"
-          />
-        </c-col>
-      </c-row>
-    </c-card-body>
-  </c-card>
+          </c-card-body>
+        </c-card>
+      </c-tab-panel>
 
-  <c-card class="mb-4">
-    <c-card-header class="d-flex justify-content-between align-items-center">
-      <strong>URL pools</strong>
-    </c-card-header>
-    <c-card-body>
-      <app-social-url-pool-editor
-        label="Twitter URLs (fallback pool)"
-        kind="twitter"
-        placeholder="https://x.com/account or @handle"
-        [urls]="snapshot().twitterUrlPool"
-        [invalidUrls]="rowErrors().twitter"
-        [disabled]="saving()"
-        (urlsChange)="updatePool('twitter', $event)"
-      />
+      <c-tab-panel itemKey="telegram">
+        <c-card>
+          <c-card-header><strong>Telegram URL pool</strong></c-card-header>
+          <c-card-body>
+            <p class="small text-body-secondary mb-3">
+              Random pick at launch. Use <code>https://t.me/channel</code> — saved as lowercase slug.
+            </p>
+            @if (rowErrors().telegram.length > 0) {
+              <c-alert color="danger" class="small mb-3">
+                {{ rowErrors().telegram.length }} invalid URL(s) — fix highlighted rows before save.
+              </c-alert>
+            }
+            <app-social-url-pool-editor
+              kind="telegram"
+              placeholder="https://t.me/channel"
+              [showLabel]="false"
+              [resetKey]="poolResetKey()"
+              [urls]="snapshot().telegramUrlPool"
+              [invalidUrls]="rowErrors().telegram"
+              [disabled]="saving()"
+              (urlsChange)="updatePool('telegram', $event)"
+            />
+          </c-card-body>
+        </c-card>
+      </c-tab-panel>
 
-      <app-social-url-pool-editor
-        label="Telegram URLs"
-        kind="telegram"
-        placeholder="https://t.me/channel"
-        [urls]="snapshot().telegramUrlPool"
-        [invalidUrls]="rowErrors().telegram"
-        [disabled]="saving()"
-        (urlsChange)="updatePool('telegram', $event)"
-      />
-
-      <app-social-url-pool-editor
-        label="Website URLs"
-        kind="website"
-        placeholder="https://example.com"
-        [urls]="snapshot().websiteUrlPool"
-        [invalidUrls]="rowErrors().website"
-        [disabled]="saving()"
-        (urlsChange)="updatePool('website', $event)"
-      />
-    </c-card-body>
-  </c-card>
-
+      <c-tab-panel itemKey="website">
+        <c-card>
+          <c-card-header><strong>Website URL pool</strong></c-card-header>
+          <c-card-body>
+            <p class="small text-body-secondary mb-3">
+              Random landing page at launch. <code>https://</code> required (or paste domain — auto-prefixed on save).
+            </p>
+            @if (rowErrors().website.length > 0) {
+              <c-alert color="danger" class="small mb-3">
+                {{ rowErrors().website.length }} invalid URL(s) — fix highlighted rows before save.
+              </c-alert>
+            }
+            <app-social-url-pool-editor
+              kind="website"
+              placeholder="https://example.com"
+              [showLabel]="false"
+              [resetKey]="poolResetKey()"
+              [urls]="snapshot().websiteUrlPool"
+              [invalidUrls]="rowErrors().website"
+              [disabled]="saving()"
+              (urlsChange)="updatePool('website', $event)"
+            />
+          </c-card-body>
+        </c-card>
+      </c-tab-panel>
+    </c-tabs-content>
+  </c-tabs>
 }

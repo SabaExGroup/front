@@ -146,6 +146,7 @@
                       explorer
                     </a>
                   }
+                  <app-gmgn-link [network]="w.network" [address]="w.address" kind="wallet" />
                   <button
                     type="button"
                     class="btn btn-link btn-sm p-0 ms-1"
@@ -206,7 +207,10 @@
                     } @else if (expandedDetail(); as detail) {
                       <dl class="wallet-detail-meta mb-0">
                         <dt>Full address</dt>
-                        <dd><code class="small">{{ detail.address }}</code></dd>
+                        <dd>
+                          <code class="small">{{ detail.address }}</code>
+                          <app-gmgn-link [network]="w.network" [address]="detail.address" kind="wallet" />
+                        </dd>
                         <dt>Wallet ID</dt>
                         <dd><code class="small">{{ detail.id }}</code></dd>
                         <dt>Usage mode</dt>

@@ -21,6 +21,7 @@
           @if (data.token; as token) {
             <div class="small text-body-secondary">
               {{ token.name }} · <code class="token-address">{{ token.address }}</code>
+              <app-gmgn-link [network]="data.network" [address]="token.address" kind="token" />
             </div>
           }
         </div>
@@ -173,6 +174,7 @@
                 <article class="wallet-card" [class.wallet-card--warning]="!!w.syncError">
                   <div class="wallet-card__header">
                     <code class="wallet-card__address" [title]="w.address">{{ shortAddress(w.address) }}</code>
+                    <app-gmgn-link [network]="data.network" [address]="w.address" kind="wallet" />
                     <button cButton color="link" size="sm" type="button" (click)="toggleWalletExpand('market', w)">
                       {{ isWalletExpanded('market', w.id) ? 'Hide' : 'Details' }}
                     </button>
@@ -193,7 +195,10 @@
                   </div>
                   @if (isWalletExpanded('market', w.id)) {
                     <div class="wallet-card__details">
-                      <div><code class="small">{{ w.address }}</code></div>
+                      <div>
+                        <code class="small">{{ w.address }}</code>
+                        <app-gmgn-link [network]="data.network" [address]="w.address" kind="wallet" />
+                      </div>
                       balanceNative: {{ w.balanceNative }} · balanceToken: {{ w.balanceToken }}
                       · active: {{ w.isActive ? 'yes' : 'no' }}
                     </div>
@@ -224,7 +229,10 @@
                           {{ isWalletExpanded('market', w.id) ? '−' : '+' }}
                         </button>
                       </td>
-                      <td><code class="small wallet-address" [title]="w.address">{{ w.address }}</code></td>
+                      <td>
+                        <code class="small wallet-address" [title]="w.address">{{ w.address }}</code>
+                        <app-gmgn-link [network]="data.network" [address]="w.address" kind="wallet" />
+                      </td>
                       <td>{{ formatUsd(w.nativeUsd) }}</td>
                       <td>{{ formatUsd(w.tokenUsd) }}</td>
                       <td>{{ formatUsd(w.totalUsd) }}</td>
@@ -285,6 +293,7 @@
                 <article class="wallet-card" [class.wallet-card--warning]="!!w.syncError">
                   <div class="wallet-card__header">
                     <code class="wallet-card__address" [title]="w.address">{{ shortAddress(w.address) }}</code>
+                    <app-gmgn-link [network]="data.network" [address]="w.address" kind="wallet" />
                     <button cButton color="link" size="sm" type="button" (click)="toggleWalletExpand('tokenOwner', w)">
                       {{ isWalletExpanded('tokenOwner', w.id) ? 'Hide' : 'Details' }}
                     </button>
@@ -305,7 +314,10 @@
                   </div>
                   @if (isWalletExpanded('tokenOwner', w.id)) {
                     <div class="wallet-card__details">
-                      <div><code class="small">{{ w.address }}</code></div>
+                      <div>
+                        <code class="small">{{ w.address }}</code>
+                        <app-gmgn-link [network]="data.network" [address]="w.address" kind="wallet" />
+                      </div>
                       balanceNative: {{ w.balanceNative }} · balanceToken: {{ w.balanceToken }}
                       · active: {{ w.isActive ? 'yes' : 'no' }}
                     </div>
@@ -336,7 +348,10 @@
                           {{ isWalletExpanded('tokenOwner', w.id) ? '−' : '+' }}
                         </button>
                       </td>
-                      <td><code class="small wallet-address" [title]="w.address">{{ w.address }}</code></td>
+                      <td>
+                        <code class="small wallet-address" [title]="w.address">{{ w.address }}</code>
+                        <app-gmgn-link [network]="data.network" [address]="w.address" kind="wallet" />
+                      </td>
                       <td>{{ formatUsd(w.nativeUsd) }}</td>
                       <td>{{ formatUsd(w.tokenUsd) }}</td>
                       <td>{{ formatUsd(w.totalUsd) }}</td>

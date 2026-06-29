@@ -26,6 +26,7 @@ import {
   CycleAnalysisWalletDto,
   InflowConfidence,
 } from '../../../../../core/models/api.types';
+import { GmgnQuickLinkComponent } from '../../../../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
 import { CycleStatusBadgeComponent } from '../../../../../shared/components/cycle-status-badge/cycle-status-badge.component';
 import { ToastService } from '../../../../../shared/services/toast.service';
 import { extractErrorMessage } from '../../../../../core/utils/error.util';
@@ -49,6 +50,7 @@ type WalletGroupKey = 'market' | 'tokenOwner';
     TableDirective,
     BadgeComponent,
     CycleStatusBadgeComponent,
+    GmgnQuickLinkComponent,
     DatePipe,
     DecimalPipe,
   ],
