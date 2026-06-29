@@ -684,6 +684,13 @@ export interface CycleMarketSessionResponseDto {
   startedAt?: string;
   stoppedAt?: string | null;
   blitzMode?: boolean;
+  blitzIndex?: number;
+  strategyTargetTradesPerMinute?: number;
+  baseTargetTradesPerMinute?: number;
+  buyBiasPercent?: number;
+  visibilityPhase?: string;
+  botMagnetActive?: boolean;
+  targetMarketCapUsd?: number;
   marketCapUsd?: number;
   volumeUsd?: number;
   priceChangePercent?: number;

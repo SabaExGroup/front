@@ -1,0 +1,159 @@
+<c-card class="market-making-panel" [class.market-making-panel--compact]="compact()">
+  <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <strong>Market making</strong>
+      @if (isRunning()) {
+        <c-badge color="success">live · {{ tradesPerMinute() ?? '—' }}/min</c-badge>
+      }
+      @if (cycleStatus() === 'MARKET_MAKING' && isRunning()) {
+        <c-badge color="info">manual</c-badge>
+      }
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      @if (!compact()) {
+        <button
+          cButton
+          color="light"
+          size="sm"
+          type="button"
+          [disabled]="isBusy()"
+          (click)="syncBalances()"
+        >
+          @if (balanceSyncing()) { <c-spinner size="sm" /> } @else { Sync balances }
+        </button>
+      }
+      <button
+        cButton
+        color="light"
+        size="sm"
+        type="button"
+        [disabled]="isBusy()"
+        (click)="refreshSession()"
+      >
+        Refresh
+      </button>
+    </div>
+  </c-card-header>
+
+  <c-card-body>
+    @if (isHalted()?.halted) {
+      <c-alert color="danger" class="mb-3">
+        <strong>System halted</strong>
+        @if (isHalted()?.halt?.reason) {
+          — {{ isHalted()?.halt?.reason }}
+        }
+        <div class="mt-2">
+          <a cButton color="danger" variant="outline" size="sm" routerLink="/emergency">Open Emergency · Resume</a>
+        </div>
+      </c-alert>
+    }
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <button
+        cButton
+        color="success"
+        size="sm"
+        [disabled]="isBusy()"
+        (click)="startMarket()"
+      >
+        @if (opsLoading() && !isRunning()) { <c-spinner size="sm" /> } @else { {{ startLabel() }} }
+      </button>
+      @if (!compact()) {
+        <button
+          cButton
+          color="success"
+          size="sm"
+          variant="outline"
+          [disabled]="isBusy()"
+          (click)="syncBalancesThenStart()"
+        >
+          @if (balanceSyncing()) { <c-spinner size="sm" /> } @else { Sync &amp; start }
+        </button>
+      }
+      <button
+        cButton
+        color="danger"
+        size="sm"
+        variant="outline"
+        [disabled]="isBusy()"
+        (click)="stopMarket()"
+      >
+        @if (opsLoading() && isRunning()) { <c-spinner size="sm" /> } @else { Stop }
+      </button>
+    </div>
+
+    @if (marketDetail(); as md) {
+      <dl class="meta-list mb-0" [class.meta-list--compact]="compact()">
+        <dt>Session</dt>
+        <dd><c-badge [color]="marketStatusBadgeColor(md.status)">{{ md.status }}</c-badge></dd>
+
+        @if (md.id) {
+          <dt>Session ID</dt><dd><code class="small">{{ md.id }}</code></dd>
+        }
+
+        <dt>Trades</dt>
+        <dd>
+          {{ md.tradesExecuted }}
+          @if (tradesPerMinute(); as tpm) {
+            · {{ tpm }}/min
+          }
+        </dd>
+
+        @if (md.startedAt) {
+          <dt>Started</dt><dd>{{ md.startedAt | date: 'medium' }}</dd>
+        }
+        @if (md.stoppedAt) {
+          <dt>Stopped</dt><dd>{{ md.stoppedAt | date: 'medium' }}</dd>
+        }
+
+        @if (!compact()) {
+          @if (md.marketCapUsd != null) { <dt>Market cap</dt><dd>{{ md.marketCapUsd | currency }}</dd> }
+          @if (md.volumeUsd != null) { <dt>Volume</dt><dd>{{ md.volumeUsd | currency }}</dd> }
+          @if (md.priceChangePercent != null) { <dt>Price change</dt><dd>{{ md.priceChangePercent }}%</dd> }
+          @if (md.gasSpentUsd != null) { <dt>Gas spent</dt><dd>{{ md.gasSpentUsd | currency }}</dd> }
+          @if (md.phase) {
+            <dt>Phase</dt>
+            <dd>
+              {{ md.phase }}
+              @if (md.blitzMode) { (blitz) }
+              @if (md.blitzIndex != null) { #{{ md.blitzIndex }} }
+            </dd>
+          }
+          @if (md.visibilityPhase) { <dt>Visibility</dt><dd>{{ md.visibilityPhase }}</dd> }
+          @if (md.strategyTargetTradesPerMinute != null) {
+            <dt>Target TPM</dt><dd>{{ md.strategyTargetTradesPerMinute }}</dd>
+          }
+          @if (md.baseTargetTradesPerMinute != null) {
+            <dt>Base TPM</dt><dd>{{ md.baseTargetTradesPerMinute }}</dd>
+          }
+          @if (md.buyBiasPercent != null) { <dt>Buy bias</dt><dd>{{ md.buyBiasPercent }}%</dd> }
+          @if (md.botMagnetActive != null) {
+            <dt>Bot magnet</dt><dd>{{ md.botMagnetActive ? 'active' : 'off' }}</dd>
+          }
+          @if (md.targetMarketCapUsd != null) {
+            <dt>Target mcap</dt><dd>{{ md.targetMarketCapUsd | currency }}</dd>
+          }
+        } @else {
+          @if (md.marketCapUsd != null) { <dt>Market cap</dt><dd>{{ md.marketCapUsd | currency }}</dd> }
+          @if (md.phase) {
+            <dt>Phase</dt><dd>{{ md.phase }} @if (md.blitzMode) { (blitz) }</dd>
+          }
+        }
+      </dl>
+    } @else if (fallbackMarketSession(); as ms) {
+      <div class="small text-body-secondary">
+        {{ ms.status }} · {{ ms.tradesExecuted ?? 0 }} trades
+        <span class="d-block mt-1">No live session detail — click Refresh or Start.</span>
+      </div>
+    } @else {
+      <div class="small text-body-secondary">No market session yet — use Start when the cycle is ready.</div>
+    }
+
+    @if (!compact()) {
+      <p class="small text-body-secondary mt-3 mb-0">
+        Manual MM preserves <code>tradesExecuted</code> across stop/start. Cycle status returns to
+        COMPLETED or MONITORING after stop.
+      </p>
+    }
+  </c-card-body>
+</c-card>

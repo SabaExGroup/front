@@ -129,6 +129,33 @@ export function tokenSentimentBadgeColor(sentiment: TokenSentiment): string {
   }
 }
 
+/** Cycle statuses allowed for POST /market-generator/cycles/:id/start (manual MM). */
+export const MANUAL_MARKET_MAKING_ALLOWED_CYCLE_STATUSES = [
+  'SECURITY_CHECK',
+  'MARKET_MAKING',
+  'MONITORING',
+  'COMPLETED',
+  'FAILED',
+] as const satisfies readonly CycleStatus[];
+
+export const MARKET_SESSION_STATUSES = ['RUNNING', 'STOPPED', 'COMPLETED', 'FAILED'] as const;
+export type MarketSessionStatus = (typeof MARKET_SESSION_STATUSES)[number];
+
+export function marketSessionStatusBadgeColor(status: string): string {
+  switch (status) {
+    case 'RUNNING':
+      return 'success';
+    case 'COMPLETED':
+      return 'secondary';
+    case 'STOPPED':
+      return 'warning';
+    case 'FAILED':
+      return 'danger';
+    default:
+      return 'info';
+  }
+}
+
 export function treasuryPhaseBadgeColor(phase: TreasuryPhase): string {
   switch (phase) {
     case 'READY':

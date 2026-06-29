@@ -3,6 +3,7 @@ import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
+  AlertComponent,
   ButtonDirective,
   CardBodyComponent,
   CardComponent,
@@ -28,6 +29,7 @@ import { ToastService } from '../../../shared/services/toast.service';
 import { CycleResponseDto } from '../../../core/models/api.types';
 import { CYCLE_STATUSES, CycleStatus, LAUNCHPADS, NETWORKS, Network, Launchpad } from '../../../core/models/enums';
 import { extractErrorMessage } from '../../../core/utils/error.util';
+import { NEW_CYCLE_WALLET_DETACH_WARNING } from '../../../core/utils/market-making.util';
 
 @Component({
   selector: 'app-cycles-list',
@@ -39,6 +41,7 @@ import { extractErrorMessage } from '../../../core/utils/error.util';
     CardComponent,
     CardBodyComponent,
     CardHeaderComponent,
+    AlertComponent,
     TableDirective,
     ButtonDirective,
     RouterLink,
@@ -81,6 +84,7 @@ export class CyclesListComponent implements OnInit {
   readonly launchpadOptions = LAUNCHPADS;
   readonly limitOptions = [20, 50, 100, 200];
   readonly isHalted = this.emergency.haltStatus;
+  readonly NEW_CYCLE_WALLET_DETACH_WARNING = NEW_CYCLE_WALLET_DETACH_WARNING;
 
   constructor() {
     effect(() => {
@@ -156,7 +160,7 @@ export class CyclesListComponent implements OnInit {
       this.toast.warning('System is halted — resume before starting a cycle');
       return;
     }
-    if (!confirm('Start a new cycle?')) return;
+    if (!confirm(`Start a new cycle?\n\n${NEW_CYCLE_WALLET_DETACH_WARNING}`)) return;
 
     this.startingCycle.set(true);
     this.cyclesService.start({

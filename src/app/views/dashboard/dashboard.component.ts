@@ -40,6 +40,7 @@ import {
 } from '../../core/models/api.types';
 import { LAUNCHPADS, Launchpad, NETWORKS, Network } from '../../core/models/enums';
 import { extractErrorMessage, formatApiError } from '../../core/utils/error.util';
+import { NEW_CYCLE_WALLET_DETACH_WARNING } from '../../core/utils/market-making.util';
 import {
   fundingTotalUsd,
   withdrawalSolanaAddress,
@@ -108,6 +109,7 @@ export class DashboardComponent implements OnInit {
   readonly networkOptions = NETWORKS;
   readonly launchpadOptions = LAUNCHPADS;
   readonly isHalted = this.emergency.haltStatus;
+  readonly NEW_CYCLE_WALLET_DETACH_WARNING = NEW_CYCLE_WALLET_DETACH_WARNING;
   readonly fundingTotalUsd = fundingTotalUsd;
   readonly withdrawalSolanaAddress = withdrawalSolanaAddress;
 
@@ -235,7 +237,7 @@ export class DashboardComponent implements OnInit {
       this.toast.warning('System is halted — cannot start cycle');
       return;
     }
-    if (!confirm('Start a new cycle?')) return;
+    if (!confirm(`Start a new cycle?\n\n${NEW_CYCLE_WALLET_DETACH_WARNING}`)) return;
 
     this.startingCycle.set(true);
     this.cycles.start({

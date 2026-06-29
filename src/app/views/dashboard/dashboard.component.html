@@ -119,6 +119,9 @@
             </c-form-check>
           </c-col>
         </c-row>
+        <c-alert color="warning" class="mb-3">
+          {{ NEW_CYCLE_WALLET_DETACH_WARNING }}
+        </c-alert>
         <button cButton color="primary" [disabled]="startingCycle() || isHalted()?.halted" (click)="startCycle()">
           @if (startingCycle()) { <c-spinner size="sm" /> } @else { Confirm start }
         </button>
