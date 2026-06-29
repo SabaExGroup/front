@@ -39,10 +39,10 @@ import { MainFeeWalletService } from '../../../core/services/main-fee-wallet.ser
 import { ToastService } from '../../../shared/services/toast.service';
 import {
   CycleDetailResponseDto,
+  CycleMarketSessionResponseDto,
   CycleResumeSnapshotResponseDto,
   CycleRetryResponseDto,
   LaunchpadRecommendationDto,
-  MarketSessionDetailResponseDto,
   ProfitExtractorJobResponseDto,
   ProfitExtractorLogDto,
   ProfitExtractorStatusResponseDto,
@@ -66,6 +66,7 @@ import {
   WalletType,
 } from '../../../core/models/enums';
 import { extractErrorMessage } from '../../../core/utils/error.util';
+import { createPollSubscription } from '../../../core/utils/polling.util';
 import { ApiService } from '../../../core/http/api.service';
 import { CycleAnalysisTabComponent } from './tabs/cycle-analysis-tab/cycle-analysis-tab.component';
 import { CycleMarketBalancesTabComponent } from './tabs/cycle-market-balances-tab/cycle-market-balances-tab.component';
@@ -168,7 +169,7 @@ export class CycleDetailComponent implements OnInit {
 
   // Ops
   bestLaunchpad = signal<LaunchpadRecommendationDto | null>(null);
-  marketDetail = signal<MarketSessionDetailResponseDto | null>(null);
+  marketDetail = signal<CycleMarketSessionResponseDto | null>(null);
   lastLaunch = signal<TokenLaunchResponseDto | null>(null);
   lastTrend = signal<TrendPackageResponseDto | null>(null);
   opsLaunchpad: Launchpad | '' = '';
@@ -218,7 +219,7 @@ export class CycleDetailComponent implements OnInit {
     if (tab === 'profit' && !this.profitStatus()) {
       this.loadProfit();
     }
-    if (tab === 'ops' && this.cycle()?.marketSessionId && !this.marketDetail()) {
+    if (tab === 'ops' && this.cycle()?.tokenId) {
       this.refreshMarketSession();
     }
   }
@@ -235,6 +236,7 @@ export class CycleDetailComponent implements OnInit {
     this.profitLogsTotal.set(0);
     this.profitLogsPage.set(1);
     this.marketDetail.set(null);
+    this.stopMarketPolling();
     this.bestLaunchpad.set(null);
     this.lastLaunch.set(null);
     this.lastTrend.set(null);
@@ -253,6 +255,9 @@ export class CycleDetailComponent implements OnInit {
         this.loadResumeSnapshot(id, detail.status);
         if (detail.network) {
           this.generateNetwork = detail.network;
+        }
+        if (detail.tokenId) {
+          this.refreshMarketSession();
         }
         this.onTabActivated(this.activeTab());
       },
@@ -601,18 +606,75 @@ export class CycleDetailComponent implements OnInit {
     });
   }
 
+  marketSessionStatus(): string | null {
+    return this.marketDetail()?.status ?? this.cycle()?.marketSession?.status ?? null;
+  }
+
+  marketTradesExecuted(): number {
+    return this.marketDetail()?.tradesExecuted ?? this.cycle()?.marketSession?.tradesExecuted ?? 0;
+  }
+
+  marketTradesPerMinute(): number | null {
+    const md = this.marketDetail();
+    const tpm = md?.tpm ?? md?.tradesPerMinute;
+    return tpm != null ? tpm : null;
+  }
+
+  isMarketRunning(): boolean {
+    return this.marketSessionStatus() === 'RUNNING';
+  }
+
+  canStartMarket(): boolean {
+    if (this.opsLoading() || !this.cycle()?.tokenId) return false;
+    return !this.isMarketRunning();
+  }
+
+  canStopMarket(): boolean {
+    return this.isMarketRunning() && !this.opsLoading();
+  }
+
+  marketStartLabel(): string {
+    const status = this.marketSessionStatus();
+    if (status === 'COMPLETED' || status === 'STOPPED') return 'Restart';
+    return 'Start';
+  }
+
+  marketStatusBadgeColor(status: string): string {
+    switch (status) {
+      case 'RUNNING':
+        return 'success';
+      case 'COMPLETED':
+        return 'secondary';
+      case 'STOPPED':
+        return 'warning';
+      default:
+        return 'info';
+    }
+  }
+
   startMarket(): void {
-    const tokenId = this.cycle()?.tokenId;
-    if (!tokenId) {
+    if (!this.cycle()?.tokenId) {
       this.toast.warning('Token ID not available yet');
       return;
     }
-    if (!confirm('Start market making session?')) return;
+    const priorTrades = this.marketTradesExecuted();
+    const isRestart = this.marketStartLabel() === 'Restart';
+    const msg =
+      isRestart && priorTrades > 0
+        ? `Restart market making? Trade counter will continue from ${priorTrades} prior session trade(s).`
+        : 'Start market making session?';
+    if (!confirm(msg)) return;
+
     this.opsLoading.set(true);
-    this.ops.startMarket({ cycleId: this.cycleId(), tokenId }).subscribe({
-      next: () => {
+    this.ops.startCycleMarket(this.cycleId()).subscribe({
+      next: (session) => {
         this.opsLoading.set(false);
-        this.toast.success('Market session started');
+        this.marketDetail.set(session);
+        const toastMsg =
+          isRestart && priorTrades > 0
+            ? `Manual market making restarted — continuing from ${priorTrades} prior session trade(s)`
+            : 'Market session started';
+        this.toast.success(toastMsg);
         this.load(this.cycleId());
       },
       error: (err) => {
@@ -623,24 +685,39 @@ export class CycleDetailComponent implements OnInit {
   }
 
   refreshMarketSession(): void {
-    const sessionId = this.cycle()?.marketSessionId;
-    if (!sessionId) return;
-    this.ops.getMarketSession(sessionId).subscribe({
-      next: (detail) => this.marketDetail.set(detail),
-      error: (err) => this.toast.error(extractErrorMessage(err)),
+    const cycleId = this.cycleId();
+    if (!cycleId || !this.cycle()?.tokenId) return;
+
+    this.ops.getCycleMarketSession(cycleId).subscribe({
+      next: (detail) => {
+        this.marketDetail.set(detail);
+        this.syncMarketPolling();
+      },
+      error: (err) => {
+        if (err?.status === 404) {
+          this.marketDetail.set(null);
+          this.stopMarketPolling();
+          return;
+        }
+        this.toast.error(extractErrorMessage(err));
+      },
     });
   }
 
   stopMarket(): void {
-    const sessionId = this.cycle()?.marketSessionId;
-    if (!sessionId) return;
-    if (!confirm('Stop market making session?')) return;
+    if (!this.isMarketRunning()) {
+      this.toast.info('Market session is not running');
+      return;
+    }
+    if (!confirm('Stop market making session? Queued trades will drain and cycle moves to MONITORING.')) return;
+
     this.opsLoading.set(true);
-    this.ops.stopMarket(sessionId).subscribe({
-      next: () => {
+    this.ops.stopCycleMarket(this.cycleId()).subscribe({
+      next: (session) => {
         this.opsLoading.set(false);
+        this.marketDetail.set(session);
+        this.stopMarketPolling();
         this.toast.success('Market session stopped');
-        this.refreshMarketSession();
         this.load(this.cycleId());
       },
       error: (err) => {
@@ -648,6 +725,38 @@ export class CycleDetailComponent implements OnInit {
         this.toast.error(extractErrorMessage(err));
       },
     });
+  }
+
+  private syncMarketPolling(): void {
+    if (this.isMarketRunning()) {
+      this.startMarketPolling();
+    } else {
+      this.stopMarketPolling();
+    }
+  }
+
+  private startMarketPolling(): void {
+    if (this.marketPollSub) return;
+
+    this.marketPollSub = createPollSubscription(
+      () => this.ops.getCycleMarketSession(this.cycleId()),
+      {
+        intervalMs: 5_000,
+        stopWhen: (session) => session.status !== 'RUNNING',
+      },
+      (session) => {
+        this.marketDetail.set(session);
+        if (session.status !== 'RUNNING') {
+          this.stopMarketPolling();
+        }
+      },
+      () => this.stopMarketPolling()
+    );
+  }
+
+  private stopMarketPolling(): void {
+    this.marketPollSub?.unsubscribe();
+    this.marketPollSub = undefined;
   }
 
   private loadResumeSnapshot(id: string, status: string): void {

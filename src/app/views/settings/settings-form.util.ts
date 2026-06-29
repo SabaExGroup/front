@@ -143,8 +143,8 @@ export function normalizeSettingsShape(data: Record<string, unknown>): Record<st
     const rootValue = merged[key];
     const strategyValue = strategy[key];
     if (rootValue !== undefined || strategyValue !== undefined) {
-      // strategy.* is canonical for UI + PATCH; root keys are legacy GET noise.
-      strategy[key] = strategyValue !== undefined ? strategyValue : rootValue;
+      // Hoisted keys are DB columns — PATCH writes root; nested strategy copies can be stale.
+      strategy[key] = rootValue !== undefined ? rootValue : strategyValue;
     }
     delete merged[key];
   }

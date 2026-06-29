@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  CycleMarketSessionResponseDto,
   LaunchTokenDto,
   LaunchpadRecommendationDto,
   MarketSessionDetailResponseDto,
@@ -29,14 +30,32 @@ export class CycleOpsService {
     return this.api.post<TokenLaunchResponseDto>('/token-factory/launch', body);
   }
 
+  /** Start or restart market making for a cycle (balance sync → reconcile → preflight → trade). */
+  startCycleMarket(cycleId: string): Observable<CycleMarketSessionResponseDto> {
+    return this.api.post<CycleMarketSessionResponseDto>(`/market-generator/cycles/${cycleId}/start`, {});
+  }
+
+  /** Stop a running market session; idempotent when already completed. */
+  stopCycleMarket(cycleId: string): Observable<CycleMarketSessionResponseDto> {
+    return this.api.post<CycleMarketSessionResponseDto>(`/market-generator/cycles/${cycleId}/stop`, {});
+  }
+
+  /** Live session status for UI (status, tradesExecuted, phase, tpm). */
+  getCycleMarketSession(cycleId: string): Observable<CycleMarketSessionResponseDto> {
+    return this.api.get<CycleMarketSessionResponseDto>(`/market-generator/cycles/${cycleId}/session`);
+  }
+
+  /** @deprecated Prefer startCycleMarket(cycleId) */
   startMarket(body: StartMarketMakingDto): Observable<MarketSessionResponseDto> {
     return this.api.post<MarketSessionResponseDto>('/market-generator/start', body);
   }
 
+  /** @deprecated Prefer getCycleMarketSession(cycleId) */
   getMarketSession(sessionId: string): Observable<MarketSessionDetailResponseDto> {
     return this.api.get<MarketSessionDetailResponseDto>(`/market-generator/sessions/${sessionId}`);
   }
 
+  /** @deprecated Prefer stopCycleMarket(cycleId) */
   stopMarket(sessionId: string): Observable<MarketSessionResponseDto> {
     return this.api.post<MarketSessionResponseDto>(`/market-generator/sessions/${sessionId}/stop`, {});
   }

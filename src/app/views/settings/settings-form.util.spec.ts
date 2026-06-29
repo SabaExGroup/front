@@ -216,18 +216,18 @@ describe('settings-form.util', () => {
       expect(form.get('minLiquidityRatio')).toBeNull();
     });
 
-    it('prefers strategy.maxTokenHoldPercent over stale legacy root value', () => {
+    it('prefers root maxTokenHoldPercent over stale strategy copy on load', () => {
       const apiSnapshot = {
-        maxTokenHoldPercent: 8,
+        maxTokenHoldPercent: 25,
         strategy: {
-          maxTokenHoldPercent: 12,
+          maxTokenHoldPercent: 30,
           mode: 'BLITZ',
         },
       };
 
       const form = buildSettingsForm(fb, apiSnapshot);
 
-      expect(form.get('strategy.maxTokenHoldPercent')?.value).toBe(12);
+      expect(form.get('strategy.maxTokenHoldPercent')?.value).toBe(25);
     });
 
     it('preserves existing trendFinder.style over trendStyleDefault', () => {

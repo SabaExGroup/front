@@ -375,6 +375,9 @@ export interface SettingsUpdateDto {
   minTradeAmountUsd?: number;
   minMarketCapUsd?: number;
   minLiquidityUsd?: number;
+  minLiquidityRatio?: number;
+  minVolume5mUsd?: number;
+  maxTokenHoldPercent?: number;
   marketWalletCount?: number;
   marketWalletUsageMode?: string;
   securityMinScore?: number;
@@ -384,6 +387,7 @@ export interface SettingsUpdateDto {
   integrations?: IntegrationConfigDto;
   strategy?: Record<string, unknown>;
   treasury?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface ProxyTestResultDto {
@@ -600,6 +604,27 @@ export interface LaunchTokenDto {
 export interface StartMarketMakingDto {
   cycleId: string;
   tokenId: string;
+}
+
+/** GET /market-generator/cycles/:cycleId/session */
+export interface CycleMarketSessionResponseDto {
+  id?: string;
+  cycleId?: string;
+  tokenId?: string;
+  status: string;
+  tradesExecuted: number;
+  phase?: string;
+  /** Trades per minute (new API field) */
+  tpm?: number;
+  /** Legacy alias for tpm */
+  tradesPerMinute?: number;
+  startedAt?: string;
+  stoppedAt?: string | null;
+  blitzMode?: boolean;
+  marketCapUsd?: number;
+  volumeUsd?: number;
+  priceChangePercent?: number;
+  gasSpentUsd?: number;
 }
 
 export interface MarketSessionDetailResponseDto {

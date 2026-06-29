@@ -162,7 +162,25 @@
               </c-card>
             }
 
-            @if (c.marketSession) {
+            @if (marketDetail(); as md) {
+              <c-card>
+                <c-card-header class="d-flex justify-content-between align-items-center">
+                  <strong>Market session</strong>
+                  @if (isMarketRunning()) {
+                    <span class="small text-success">live</span>
+                  }
+                </c-card-header>
+                <c-card-body>
+                  <c-badge [color]="marketStatusBadgeColor(md.status)">{{ md.status }}</c-badge>
+                  <div class="mt-2">Trades: {{ md.tradesExecuted }}
+                    @if (marketTradesPerMinute(); as tpm) { · {{ tpm }}/min }
+                  </div>
+                  @if (md.phase) {
+                    <div class="small text-body-secondary mt-1">Phase: {{ md.phase }}</div>
+                  }
+                </c-card-body>
+              </c-card>
+            } @else if (c.marketSession) {
               <c-card>
                 <c-card-header><strong>Market session</strong></c-card-header>
                 <c-card-body>
@@ -526,21 +544,33 @@
               </c-card-header>
               <c-card-body>
                 <div class="d-flex gap-2 mb-3">
-                  <button cButton color="success" size="sm" [disabled]="opsLoading() || !c.tokenId" (click)="startMarket()">Start</button>
-                  <button cButton color="danger" size="sm" variant="outline" [disabled]="opsLoading() || !c.marketSessionId" (click)="stopMarket()">Stop</button>
+                  <button cButton color="success" size="sm" [disabled]="!canStartMarket()" (click)="startMarket()">
+                    {{ marketStartLabel() }}
+                  </button>
+                  <button cButton color="danger" size="sm" variant="outline" [disabled]="!canStopMarket()" (click)="stopMarket()">
+                    Stop
+                  </button>
                 </div>
                 @if (marketDetail(); as md) {
                   <dl class="meta-list mb-0">
-                    <dt>Status</dt><dd><c-badge color="info">{{ md.status }}</c-badge></dd>
-                    <dt>Trades</dt><dd>{{ md.tradesExecuted }} · {{ md.tradesPerMinute }}/min</dd>
-                    <dt>Market cap</dt><dd>{{ md.marketCapUsd | currency }}</dd>
-                    <dt>Volume</dt><dd>{{ md.volumeUsd | currency }}</dd>
-                    <dt>Price change</dt><dd>{{ md.priceChangePercent }}%</dd>
-                    <dt>Gas spent</dt><dd>{{ md.gasSpentUsd | currency }}</dd>
+                    <dt>Status</dt><dd><c-badge [color]="marketStatusBadgeColor(md.status)">{{ md.status }}</c-badge></dd>
+                    <dt>Trades</dt>
+                    <dd>
+                      {{ md.tradesExecuted }}
+                      @if (marketTradesPerMinute(); as tpm) {
+                        · {{ tpm }}/min
+                      }
+                    </dd>
+                    @if (md.marketCapUsd != null) { <dt>Market cap</dt><dd>{{ md.marketCapUsd | currency }}</dd> }
+                    @if (md.volumeUsd != null) { <dt>Volume</dt><dd>{{ md.volumeUsd | currency }}</dd> }
+                    @if (md.priceChangePercent != null) { <dt>Price change</dt><dd>{{ md.priceChangePercent }}%</dd> }
+                    @if (md.gasSpentUsd != null) { <dt>Gas spent</dt><dd>{{ md.gasSpentUsd | currency }}</dd> }
                     @if (md.phase) { <dt>Phase</dt><dd>{{ md.phase }} @if (md.blitzMode) { (blitz) }</dd> }
                   </dl>
                 } @else if (c.marketSession) {
-                  <div class="small text-body-secondary">{{ c.marketSession.status }} · {{ c.marketSession.tradesExecuted ?? 0 }} trades</div>
+                  <div class="small text-body-secondary">
+                    {{ c.marketSession.status }} · {{ c.marketSession.tradesExecuted ?? 0 }} trades
+                  </div>
                 } @else {
                   <div class="small text-body-secondary">No market session yet</div>
                 }
