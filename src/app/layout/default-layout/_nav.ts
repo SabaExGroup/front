@@ -36,6 +36,11 @@ export const navItems: AppNavItem[] = [
     iconComponent: { name: 'cil-dollar' },
   },
   {
+    name: 'Wallet Overview',
+    url: '/wallets',
+    iconComponent: { name: 'cilWallet' },
+  },
+  {
     name: 'Token Owner Pool',
     url: '/token-owners',
     iconComponent: { name: 'cilUser' },

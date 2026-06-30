@@ -1,0 +1,359 @@
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h2 class="mb-1">Wallet Overview</h2>
+    <p class="text-body-secondary small mb-0">
+      Cycle and pool wallets (MARKET + TOKEN_OWNER) — balances from DB cache or on-chain sync.
+    </p>
+  </div>
+  <div class="page-actions d-flex flex-wrap gap-2">
+    <button
+      cButton
+      color="light"
+      size="sm"
+      type="button"
+      [disabled]="loading() || syncing()"
+      (click)="load()"
+    >
+      @if (loading()) { <c-spinner size="sm" /> } @else { Refresh (DB) }
+    </button>
+    <button
+      cButton
+      color="primary"
+      size="sm"
+      type="button"
+      [disabled]="loading() || syncing()"
+      (click)="syncFromChain()"
+    >
+      @if (syncing()) { <c-spinner size="sm" /> } @else { Sync balances }
+    </button>
+  </div>
+</div>
+
+@if (syncing()) {
+  <c-alert color="info" class="small mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <c-spinner size="sm" />
+      <span>Syncing balances from chain — this may take up to a minute for large wallet pools.</span>
+    </div>
+  </c-alert>
+}
+
+@if (loading() && !balances()) {
+  <div class="text-center py-5">
+    <c-spinner />
+    <p class="mt-2 text-body-secondary">Loading wallet overview…</p>
+  </div>
+} @else if (balances(); as data) {
+  @if (data.failedSyncCount > 0) {
+    <c-alert color="warning" class="mb-3">
+      {{ data.failedSyncCount }} wallet{{ data.failedSyncCount === 1 ? '' : 's' }} failed to sync —
+      remaining wallets completed. Failed rows show the previous DB balance.
+    </c-alert>
+  }
+
+  <c-row class="g-3 g-md-4 mb-4">
+    <c-col xs="6" md="4" xl="3">
+      <c-card class="kpi-card h-100">
+        <c-card-body>
+          <div class="segment-title">Total USD</div>
+          <div class="stat-value">{{ data.totalUsd | currency }}</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col xs="6" md="4" xl="3">
+      <c-card class="kpi-card h-100">
+        <c-card-body>
+          <div class="segment-title">Wallets</div>
+          <div class="stat-value">{{ data.activeWalletCount }} / {{ data.walletCount }}</div>
+          <div class="small text-body-secondary mt-1">active / total</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    @if (solanaTotals(); as sol) {
+      <c-col xs="6" md="4" xl="3">
+        <c-card class="kpi-card h-100">
+          <c-card-body>
+            <div class="segment-title">Solana</div>
+            <div class="stat-value">{{ sol.totalUsd | currency }}</div>
+            <div class="small text-body-secondary mt-1">{{ sol.totalNative }} SOL</div>
+            <div class="small text-body-secondary">{{ sol.activeWalletCount }} active / {{ sol.walletCount }}</div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+    }
+    @if (bscTotals(); as bsc) {
+      <c-col xs="6" md="4" xl="3">
+        <c-card class="kpi-card h-100">
+          <c-card-body>
+            <div class="segment-title">BSC</div>
+            <div class="stat-value">{{ bsc.totalUsd | currency }}</div>
+            <div class="small text-body-secondary mt-1">{{ bsc.totalNative }} BNB</div>
+            <div class="small text-body-secondary">{{ bsc.activeWalletCount }} active / {{ bsc.walletCount }}</div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+    }
+    @if (marketTotals(); as market) {
+      <c-col xs="6" md="4" xl="3">
+        <c-card class="kpi-card h-100">
+          <c-card-body>
+            <div class="segment-title">Market wallets</div>
+            <div class="stat-value">{{ market.totalUsd | currency }}</div>
+            <div class="small text-body-secondary mt-1">{{ market.walletCount }} wallets</div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+    }
+    @if (ownerTotals(); as owners) {
+      <c-col xs="6" md="4" xl="3">
+        <c-card class="kpi-card h-100">
+          <c-card-body>
+            <div class="segment-title">Token owners</div>
+            <div class="stat-value">{{ owners.totalUsd | currency }}</div>
+            <div class="small text-body-secondary mt-1">{{ owners.walletCount }} wallets</div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+    }
+    <c-col xs="6" md="4" xl="3">
+      <c-card class="kpi-card h-100">
+        <c-card-body>
+          <div class="segment-title">Sync errors</div>
+          <div class="stat-value" [class.text-danger]="data.failedSyncCount > 0">
+            {{ data.failedSyncCount }}
+          </div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+    <c-col xs="6" md="4" xl="3">
+      <c-card class="kpi-card h-100">
+        <c-card-body>
+          <div class="segment-title">Last synced</div>
+          <div class="stat-value stat-value--compact">
+            @if (data.syncedAt) {
+              {{ data.syncedAt | date: 'medium' }}
+            } @else {
+              <span class="text-body-secondary">Cached data</span>
+            }
+          </div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <c-card class="mb-4">
+    <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+      <strong>Operational wallets</strong>
+      <a cButton color="light" size="sm" variant="outline" routerLink="/treasury">Open Treasury</a>
+    </c-card-header>
+    <c-card-body>
+      <p class="small text-body-secondary mb-3">
+        Funding and withdrawal addresses are outside the cycle/pool overview scope — loaded from
+        <code>GET /main-fee-wallet</code>.
+      </p>
+      @if (loadingOperational()) {
+        <div class="text-center py-2"><c-spinner size="sm" /></div>
+      } @else if (mainFeeWallet(); as w) {
+        <c-row class="g-3">
+          <c-col md="6">
+            <div class="operational-block">
+              <div class="operational-block__title">Funding (rearm)</div>
+              <div class="operational-block__value">{{ fundingTotalUsd(w) | currency }}</div>
+              <div class="small text-body-secondary">USDC + ETH on Ethereum</div>
+            </div>
+          </c-col>
+          <c-col md="6">
+            <div class="operational-block">
+              <div class="operational-block__title">Withdrawal (profit)</div>
+              <div class="operational-block__value">{{ w.withdrawalTotalUsd | currency }}</div>
+              <div class="small text-body-secondary">SOL + BNB on withdrawal wallets</div>
+            </div>
+          </c-col>
+        </c-row>
+      } @else {
+        <span class="text-body-secondary small">Could not load operational wallet balances.</span>
+      }
+    </c-card-body>
+  </c-card>
+
+  <c-card>
+    <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+      <div>
+        <strong>Registered wallets</strong>
+        <div class="small text-body-secondary mt-1">{{ data.wallets.length }} row{{ data.wallets.length === 1 ? '' : 's' }} in response</div>
+      </div>
+      <div class="wallet-filters d-flex flex-wrap gap-2 align-items-end">
+        <div>
+          <label cLabel class="small mb-1">Network</label>
+          <select
+            cSelect
+            size="sm"
+            class="wallet-filter-select"
+            [ngModel]="networkFilter()"
+            [disabled]="loading() || syncing()"
+            (ngModelChange)="onNetworkFilterChange($event)"
+          >
+            <option value="">All networks</option>
+            @for (net of networkOptions; track net) {
+              <option [value]="net">{{ net }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label cLabel class="small mb-1">Type</label>
+          <select
+            cSelect
+            size="sm"
+            class="wallet-filter-select"
+            [ngModel]="typeFilter()"
+            [disabled]="loading() || syncing()"
+            (ngModelChange)="onTypeFilterChange($event)"
+          >
+            <option value="">All types</option>
+            @for (t of walletTypeOptions; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </c-card-header>
+    <c-card-body>
+      @if (loading() && data.wallets.length === 0) {
+        <div class="text-center py-3"><c-spinner /></div>
+      } @else if (data.wallets.length === 0) {
+        <p class="text-body-secondary mb-0">No wallets match the current filters.</p>
+      } @else {
+        <div class="wallet-cards d-lg-none">
+          @for (w of data.wallets; track w.id) {
+            <article class="wallet-card" [class.wallet-card--warning]="w.syncError">
+              <div class="wallet-card__header">
+                <button
+                  type="button"
+                  class="wallet-card__address btn btn-link p-0 text-start"
+                  [title]="w.address"
+                  (click)="copyAddress(w.address)"
+                >
+                  <code>{{ shortAddress(w.address) }}</code>
+                </button>
+                <div class="d-flex flex-wrap gap-1">
+                  @if (walletExplorerUrl(w.network, w.address); as explorerUrl) {
+                    <a cButton color="light" size="sm" variant="ghost" [href]="explorerUrl" target="_blank" rel="noopener">Explorer</a>
+                  }
+                  <app-gmgn-link [network]="w.network" [address]="w.address" kind="wallet" />
+                </div>
+              </div>
+              <div class="wallet-card__badges mb-2">
+                <c-badge color="info">{{ w.network }}</c-badge>
+                <c-badge color="secondary">{{ w.type }}</c-badge>
+                @if (w.isActive) {
+                  <c-badge color="success">Active</c-badge>
+                } @else {
+                  <c-badge color="secondary">Inactive</c-badge>
+                }
+              </div>
+              <div class="wallet-card__stats">
+                <div class="wallet-card__stat">
+                  <span class="label">Native</span>
+                  <span class="value">{{ w.balanceNative }} {{ nativeUnit(w.network) }}</span>
+                </div>
+                <div class="wallet-card__stat">
+                  <span class="label">USD</span>
+                  <span class="value">{{ w.balanceUsd | currency }}</span>
+                </div>
+                <div class="wallet-card__stat">
+                  <span class="label">Cycle</span>
+                  <span class="value">
+                    @if (w.cycleId) {
+                      <a [routerLink]="['/cycles', w.cycleId]">{{ shortAddress(w.cycleId, 8, 6) }}</a>
+                    } @else {
+                      —
+                    }
+                  </span>
+                </div>
+                <div class="wallet-card__stat">
+                  <span class="label">Sync</span>
+                  <span class="value" [class.text-danger]="w.syncError">
+                    @if (w.syncError) {
+                      <span [cTooltip]="w.syncError">{{ syncStatusLabel(w) }}</span>
+                    } @else {
+                      {{ syncStatusLabel(w) }}
+                    }
+                  </span>
+                </div>
+              </div>
+              @if (w.syncError) {
+                <div class="wallet-card__error">{{ w.syncError }}</div>
+              }
+            </article>
+          }
+        </div>
+
+        <div class="table-scroll d-none d-lg-block">
+          <table cTable hover responsive small>
+            <thead>
+              <tr>
+                <th>Address</th>
+                <th>Network</th>
+                <th>Type</th>
+                <th>Cycle</th>
+                <th>Native</th>
+                <th>USD</th>
+                <th>Status</th>
+                <th>Sync</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (w of data.wallets; track w.id) {
+                <tr [class.table-warning]="w.syncError">
+                  <td>
+                    <div class="d-flex flex-wrap align-items-center gap-1">
+                      <button
+                        type="button"
+                        class="btn btn-link p-0 text-start wallet-address-btn"
+                        [title]="w.address + ' — click to copy'"
+                        (click)="copyAddress(w.address)"
+                      >
+                        <code class="small wallet-address">{{ shortAddress(w.address) }}</code>
+                      </button>
+                      @if (walletExplorerUrl(w.network, w.address); as explorerUrl) {
+                        <a cButton color="light" size="sm" variant="ghost" [href]="explorerUrl" target="_blank" rel="noopener">↗</a>
+                      }
+                      <app-gmgn-link [network]="w.network" [address]="w.address" kind="wallet" />
+                    </div>
+                  </td>
+                  <td><c-badge color="info">{{ w.network }}</c-badge></td>
+                  <td>{{ w.type }}</td>
+                  <td>
+                    @if (w.cycleId) {
+                      <a [routerLink]="['/cycles', w.cycleId]">
+                        <code class="small">{{ shortAddress(w.cycleId, 8, 6) }}</code>
+                      </a>
+                    } @else {
+                      <span class="text-body-secondary">—</span>
+                    }
+                  </td>
+                  <td>{{ w.balanceNative }} {{ nativeUnit(w.network) }}</td>
+                  <td>{{ w.balanceUsd | currency }}</td>
+                  <td>
+                    @if (w.isActive) {
+                      <c-badge color="success">Active</c-badge>
+                    } @else {
+                      <c-badge color="secondary">Inactive</c-badge>
+                    }
+                  </td>
+                  <td>
+                    @if (w.syncError) {
+                      <span class="text-danger small" [cTooltip]="w.syncError">{{ syncStatusLabel(w) }}</span>
+                    } @else {
+                      <span class="text-body-secondary small">{{ syncStatusLabel(w) }}</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </c-card-body>
+  </c-card>
+}

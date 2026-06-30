@@ -396,6 +396,48 @@ export interface CycleMarketWalletBalancesResponseDto {
   wallets: CycleMarketWalletBalanceRowDto[];
 }
 
+export interface SystemWalletNetworkTotalsDto {
+  walletCount: number;
+  activeWalletCount: number;
+  totalNative: string;
+  totalUsd: number;
+}
+
+export interface SystemWalletTypeTotalsDto {
+  walletCount: number;
+  totalUsd: number;
+}
+
+export interface SystemWalletBalanceRowDto {
+  id: string;
+  address: string;
+  network: Network;
+  type: WalletType;
+  cycleId: string | null;
+  balanceNative: string;
+  balanceUsd: number;
+  isActive: boolean;
+  refreshedAt?: string;
+  fromCache?: boolean;
+  syncError?: string;
+}
+
+export interface SystemWalletBalancesResponseDto {
+  walletCount: number;
+  activeWalletCount: number;
+  totalUsd: number;
+  totalsByNetwork: Record<Network, SystemWalletNetworkTotalsDto>;
+  totalsByType: Record<WalletType, SystemWalletTypeTotalsDto>;
+  syncedAt: string | null;
+  failedSyncCount: number;
+  wallets: SystemWalletBalanceRowDto[];
+}
+
+export interface ListSystemWalletBalancesQuery {
+  network?: Network;
+  type?: WalletType;
+}
+
 export interface TelegramConfigDto {
   botToken?: string;
   chatIds?: string[];

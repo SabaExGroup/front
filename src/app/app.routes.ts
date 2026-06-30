@@ -38,6 +38,11 @@ export const routes: Routes = [
         loadChildren: () => import('./views/treasury/routes').then((m) => m.routes),
       },
       {
+        path: 'wallets',
+        data: { title: 'Wallet Overview' },
+        loadChildren: () => import('./views/wallet-overview/routes').then((m) => m.routes),
+      },
+      {
         path: 'token-owners',
         data: { title: 'Token Owner Pool' },
         loadChildren: () => import('./views/token-owners/routes').then((m) => m.routes),
