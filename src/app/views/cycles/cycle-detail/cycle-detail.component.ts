@@ -85,11 +85,12 @@ import {
 } from '../../../core/utils/trend-social.util';
 import { ApiService } from '../../../core/http/api.service';
 import { CycleAnalysisTabComponent } from './tabs/cycle-analysis-tab/cycle-analysis-tab.component';
+import { CycleExternalTradersTabComponent } from './tabs/cycle-external-traders-tab/cycle-external-traders-tab.component';
 import { CycleMarketBalancesTabComponent } from './tabs/cycle-market-balances-tab/cycle-market-balances-tab.component';
 import { CycleMarketMakingPanelComponent } from './panels/cycle-market-making-panel/cycle-market-making-panel.component';
 import { isManualMarketMakingLive } from '../../../core/utils/market-making.util';
 
-type CycleTab = 'overview' | 'wallets' | 'market-balances' | 'profit' | 'analysis' | 'ops';
+type CycleTab = 'overview' | 'wallets' | 'market-balances' | 'profit' | 'analysis' | 'external-traders' | 'ops';
 
 @Component({
   selector: 'app-cycle-detail',
@@ -128,6 +129,7 @@ type CycleTab = 'overview' | 'wallets' | 'market-balances' | 'profit' | 'analysi
     TabsContentComponent,
     TabsListComponent,
     CycleAnalysisTabComponent,
+    CycleExternalTradersTabComponent,
   CycleMarketBalancesTabComponent,
   CycleMarketMakingPanelComponent,
   GmgnQuickLinkComponent,

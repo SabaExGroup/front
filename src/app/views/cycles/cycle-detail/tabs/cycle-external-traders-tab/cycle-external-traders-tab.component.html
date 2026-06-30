@@ -1,0 +1,523 @@
+@if (tokenUnavailable()) {
+  <c-alert color="secondary" class="mb-0">
+    <strong>Token not on-chain</strong> — this cycle does not have a launched token yet. External trader intelligence is available after token launch.
+  </c-alert>
+} @else if (loadError() && !snapshot()) {
+  <c-alert color="danger" class="mb-3">
+    {{ loadError() }}
+    <div class="mt-2">
+      <button cButton color="danger" variant="outline" size="sm" type="button" (click)="retryLoad()">Retry</button>
+    </div>
+  </c-alert>
+} @else if (syncing() && !snapshot()) {
+  <div class="text-center py-5">
+    <c-spinner />
+    <p class="mt-2 text-body-secondary small">Syncing external traders — this may take 15–90 seconds…</p>
+  </div>
+} @else if (snapshot(); as data) {
+  <!-- Header -->
+  <c-card class="mb-4">
+    <c-card-body>
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-start gap-3">
+        <div class="min-w-0">
+          <h5 class="mb-2 d-flex flex-wrap align-items-center gap-2">
+            @if (data.token?.symbol; as symbol) {
+              <span>{{ symbol }}</span>
+            } @else {
+              <span class="text-body-secondary">—</span>
+            }
+            <c-badge color="secondary">{{ data.network }}</c-badge>
+            <app-cycle-status-badge [status]="$any(data.status)" />
+            @if (isDataHealthy(data)) {
+              <c-badge color="success">Data complete</c-badge>
+            } @else {
+              <c-badge color="warning">Data gaps</c-badge>
+            }
+          </h5>
+          @if (data.token; as token) {
+            <div class="token-meta small text-body-secondary">
+              <span class="token-meta__item">
+                Price <strong>{{ formatUsd(token.priceUsd) }}</strong>
+              </span>
+              <span class="token-meta__item">
+                Liquidity <strong>{{ formatUsd(token.liquidityUsd) }}</strong>
+              </span>
+              <span class="token-meta__item">
+                MCap <strong>{{ formatUsd(token.marketCapUsd) }}</strong>
+              </span>
+              <span class="token-meta__item">
+                Holders <strong>{{ token.holderCount }}</strong>
+              </span>
+            </div>
+            <div class="small text-body-secondary mt-1">
+              <code class="token-address">{{ token.address }}</code>
+              <app-gmgn-link [network]="data.network" [address]="token.address" kind="token" />
+            </div>
+          }
+        </div>
+        <div class="analysis-actions">
+          @if (data.syncedAt) {
+            <c-badge color="success">Updated {{ data.syncedAt | date: 'medium' }}</c-badge>
+          }
+          <c-badge [color]="completenessBadgeColor(data.coverage.completeness)">
+            {{ data.coverage.completeness }}
+          </c-badge>
+          <c-badge [color]="data.reconciliation.isReconciled ? 'success' : 'warning'">
+            {{ data.reconciliation.isReconciled ? 'Reconciled' : 'Not reconciled' }}
+          </c-badge>
+          <button
+            cButton
+            color="primary"
+            size="sm"
+            type="button"
+            [disabled]="syncing()"
+            (click)="sync()"
+          >
+            @if (syncing()) { <c-spinner size="sm" class="me-1" /> }
+            Sync
+          </button>
+          <button cButton color="light" size="sm" type="button" (click)="exportCsv()">Export CSV</button>
+          <button
+            cButton
+            color="light"
+            size="sm"
+            type="button"
+            (click)="showDetailsPanel.update((v) => !v)"
+          >
+            {{ showDetailsPanel() ? 'Hide' : 'Show' }} coverage
+          </button>
+        </div>
+      </div>
+
+      @for (warning of healthWarnings(data); track warning) {
+        <c-alert color="warning" class="mt-3 mb-0">{{ warning }}</c-alert>
+      }
+
+      @if (externalDumpRisk()) {
+        <c-alert color="danger" class="mt-3 mb-0">
+          High external open interest — elevated risk of external sell pressure during exit scenarios.
+        </c-alert>
+      }
+    </c-card-body>
+  </c-card>
+
+  @if (showDetailsPanel()) {
+    <c-row class="g-3 mb-4">
+      <c-col xs="12" lg="6">
+        <c-card class="h-100">
+          <c-card-header><strong>Coverage</strong></c-card-header>
+          <c-card-body>
+            <div class="metric-grid">
+              <div class="metric-item">
+                <span class="label">On-chain holders</span>
+                <span class="value">{{ data.coverage.onChainHolderCount }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Explorer holders</span>
+                <span class="value">{{ data.coverage.explorerHolderCount }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">GMGN holder rows</span>
+                <span class="value">{{ data.coverage.gmgnHolderRows }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">GMGN trader rows</span>
+                <span class="value">{{ data.coverage.gmgnTraderRows }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Activity enriched</span>
+                <span class="value">{{ data.coverage.gmgnActivityEnriched }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Merged external</span>
+                <span class="value">{{ data.coverage.mergedUniqueExternal }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Coverage %</span>
+                <span class="value">{{ data.coverage.coveragePercent | number: '1.1-1' }}%</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Data complete %</span>
+                <span class="value">{{ data.coverage.dataCompletePercent | number: '1.1-1' }}%</span>
+              </div>
+            </div>
+            @if (data.coverage.notes.length > 0) {
+              <ul class="small text-body-secondary mb-0 mt-3 ps-3">
+                @for (note of data.coverage.notes; track note) {
+                  <li>{{ note }}</li>
+                }
+              </ul>
+            }
+          </c-card-body>
+        </c-card>
+      </c-col>
+      <c-col xs="12" lg="6">
+        <c-card class="h-100">
+          <c-card-header><strong>Reconciliation</strong></c-card-header>
+          <c-card-body>
+            <div class="metric-grid">
+              <div class="metric-item">
+                <span class="label">Aggregated buy</span>
+                <span class="value">{{ formatUsd(data.reconciliation.aggregatedExternalBuyUsd) }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Organic flow buy</span>
+                <span class="value">{{ formatUsd(data.reconciliation.organicFlowExternalBuyUsd) }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Buy delta</span>
+                <span class="value">{{ formatSignedUsd(data.reconciliation.buyUsdDelta) }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Aggregated sell</span>
+                <span class="value">{{ formatUsd(data.reconciliation.aggregatedExternalSellUsd) }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Organic flow sell</span>
+                <span class="value">{{ formatUsd(data.reconciliation.organicFlowExternalSellUsd) }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Sell delta</span>
+                <span class="value">{{ formatSignedUsd(data.reconciliation.sellUsdDelta) }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Incomplete traders</span>
+                <span class="value">{{ data.reconciliation.incompleteTraderCount }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="label">Incomplete open</span>
+                <span class="value">{{ data.reconciliation.incompleteOpenPositionCount }}</span>
+              </div>
+            </div>
+            @if (data.reconciliation.notes.length > 0) {
+              <ul class="small text-body-secondary mb-0 mt-3 ps-3">
+                @for (note of data.reconciliation.notes; track note) {
+                  <li>{{ note }}</li>
+                }
+              </ul>
+            }
+          </c-card-body>
+        </c-card>
+      </c-col>
+    </c-row>
+  }
+
+  <!-- Segment KPIs -->
+  <c-row class="g-3 mb-4">
+    @for (seg of segmentKeys; track seg) {
+      <c-col xs="12" sm="6" xl="3">
+        <c-card class="kpi-card h-100">
+          <c-card-body>
+            <div class="segment-title">{{ segmentLabel(seg) }}</div>
+            <div class="stat-value">{{ data.summary[seg].traderCount }}</div>
+            <div class="text-body-secondary small mb-2">traders</div>
+            <div class="segment-stats">
+              <div><span class="label">Buy</span> {{ formatUsd(data.summary[seg].buyUsd) }}</div>
+              <div><span class="label">Sell</span> {{ formatUsd(data.summary[seg].sellUsd) }}</div>
+              <div><span class="label">Net</span> {{ formatSignedUsd(data.summary[seg].netFlowUsd) }}</div>
+              <div><span class="label">Open USD</span> {{ formatUsd(data.summary[seg].openPositionUsd) }}</div>
+              <div><span class="label">Realized PnL</span> {{ formatSignedUsd(data.summary[seg].realizedPnlUsd) }}</div>
+            </div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+    }
+  </c-row>
+
+  <c-row class="g-4 mb-4">
+    <!-- Our position -->
+    <c-col xs="12" xl="5">
+      <c-card class="h-100">
+        <c-card-header><strong>Our position</strong></c-card-header>
+        <c-card-body>
+          <div class="stat-value mb-3">{{ formatUsd(data.ourPosition.markToMarketUsd) }}</div>
+          <div class="text-body-secondary small mb-3">Mark-to-market total</div>
+          <div class="metric-grid">
+            <div class="metric-item">
+              <span class="label">Free native</span>
+              <span class="value">{{ formatUsd(data.ourPosition.freeNativeUsd) }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="label">Token held USD</span>
+              <span class="value">{{ formatUsd(data.ourPosition.tokenHeldUsd) }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="label">Already realized</span>
+              <span class="value">{{ formatUsd(data.ourPosition.alreadyRealizedUsd) }}</span>
+            </div>
+            <div class="metric-item">
+              <span class="label">Owner held %</span>
+              <span class="value">{{ data.ourPosition.ownerHeldPercent | number: '1.2-2' }}%</span>
+            </div>
+            <div class="metric-item">
+              <span class="label">Market held %</span>
+              <span class="value">{{ data.ourPosition.marketHeldPercent | number: '1.2-2' }}%</span>
+            </div>
+            <div class="metric-item">
+              <span class="label">Token held</span>
+              <span class="value">{{ data.ourPosition.tokenHeld | number: '1.0-4' }}</span>
+            </div>
+          </div>
+          <div class="summary-meta mt-3">
+            {{ data.summary.identifiedExternalTraders }} external of {{ data.summary.totalReportedHolders }} reported holders
+            · {{ data.summary.coveragePercent | number: '1.1-1' }}% coverage
+            · {{ data.summary.internalWalletCount }} internal filtered
+          </div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+
+    <!-- Exit scenarios -->
+    <c-col xs="12" xl="7">
+      <c-card class="h-100">
+        <c-card-header class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <strong>Exit scenarios</strong>
+          <span class="small text-body-secondary">Compare totalFinalUsd</span>
+        </c-card-header>
+        <c-card-body class="p-0">
+          <div class="table-scroll">
+            <table cTable hover small class="mb-0 exit-table">
+              <thead>
+                <tr>
+                  <th>Strategy</th>
+                  <th>Total final</th>
+                  <th>Slippage</th>
+                  <th>Time</th>
+                  <th>Batches</th>
+                  <th>Remaining token</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (scenario of data.exitScenarios; track scenario.strategy) {
+                  <tr
+                    [class.table-success]="isBestExitScenario(scenario)"
+                    [class.table-danger]="isHighSlippage(scenario)"
+                    [cTooltip]="assumptionsTooltip(scenario)"
+                    placement="top"
+                  >
+                    <td>
+                      <span class="fw-semibold">{{ exitStrategyLabels[scenario.strategy] }}</span>
+                      <div class="small text-body-secondary">{{ scenario.label }}</div>
+                    </td>
+                    <td class="fw-semibold">{{ formatUsd(scenario.totalFinalUsd) }}</td>
+                    <td>
+                      @if (scenario.strategy === 'MARK_TO_MARKET') {
+                        —
+                      } @else {
+                        {{ formatUsd(scenario.slippageUsd) }}
+                        @if (scenario.slippagePercent > 0) {
+                          <span class="text-body-secondary"> ({{ formatPercent(scenario.slippagePercent) }})</span>
+                        }
+                      }
+                    </td>
+                    <td>{{ formatDuration(scenario.durationEstimateSec) }}</td>
+                    <td>{{ scenario.batches || '—' }}</td>
+                    <td>{{ formatUsd(scenario.remainingTokenUsd) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <!-- Traders section -->
+  <c-card>
+    <c-card-header class="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-center gap-2">
+      <strong>External traders</strong>
+      <div class="trader-filters d-flex flex-wrap gap-2 align-items-center">
+        <input
+          cFormControl
+          type="search"
+          class="trader-search"
+          placeholder="Search address…"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        />
+        <select
+          cSelect
+          class="trader-filter-select"
+          [ngModel]="positionFilter()"
+          (ngModelChange)="positionFilter.set($event)"
+        >
+          <option value="">All statuses</option>
+          <option value="OPEN">OPEN</option>
+          <option value="CLOSED">CLOSED</option>
+          <option value="NEVER_HELD">NEVER_HELD</option>
+        </select>
+        <select
+          cSelect
+          class="trader-filter-select"
+          [ngModel]="dataCompleteFilter()"
+          (ngModelChange)="dataCompleteFilter.set($event)"
+        >
+          <option value="all">All data quality</option>
+          <option value="complete">Complete only</option>
+          <option value="incomplete">Incomplete only</option>
+        </select>
+      </div>
+    </c-card-header>
+    <c-card-body>
+      <c-tabs [activeItemKey]="traderViewTab()" (activeItemKeyChange)="traderViewTab.set($any($event))">
+        <c-tabs-list variant="pills" class="mb-3 trader-subtabs">
+          <button cTab itemKey="open" type="button">
+            Open positions ({{ data.summary.openPositions.traderCount }})
+          </button>
+          <button cTab itemKey="closed" type="button">
+            Closed ({{ data.summary.closedPositions.traderCount }})
+          </button>
+          <button cTab itemKey="all" type="button">
+            All ({{ data.traders.length }})
+          </button>
+        </c-tabs-list>
+
+        <c-tabs-content>
+          <c-tab-panel itemKey="open">
+            <ng-container *ngTemplateOutlet="traderTable" />
+          </c-tab-panel>
+          <c-tab-panel itemKey="closed">
+            <ng-container *ngTemplateOutlet="traderTable" />
+          </c-tab-panel>
+          <c-tab-panel itemKey="all">
+            <ng-container *ngTemplateOutlet="traderTable" />
+          </c-tab-panel>
+        </c-tabs-content>
+      </c-tabs>
+
+      <ng-template #traderTable>
+        @if (filteredTraders().length === 0) {
+          <p class="text-body-secondary small mb-0">No traders match the current filters.</p>
+        } @else {
+          <div class="wallet-cards d-lg-none">
+            @for (t of paginatedTraders(); track t.address) {
+              <article class="wallet-card" [class.wallet-card--warning]="!t.dataComplete">
+                <div class="wallet-card__header">
+                  <code class="wallet-card__address" [title]="t.address">{{ shortAddress(t.address) }}</code>
+                  <div class="d-flex gap-1 flex-wrap">
+                    @if (walletExplorerUrl(data.network, t.address); as explorerUrl) {
+                      <a class="small" [href]="explorerUrl" target="_blank" rel="noopener noreferrer">explorer</a>
+                    }
+                    <app-gmgn-link [network]="data.network" [address]="t.address" kind="wallet" />
+                  </div>
+                </div>
+                <c-badge [color]="positionStatusColors[t.positionStatus]" class="mb-2">{{ t.positionStatus }}</c-badge>
+                @if (!t.dataComplete) {
+                  <c-badge color="warning" class="mb-2 ms-1">Incomplete</c-badge>
+                }
+                <div class="wallet-card__stats">
+                  <div class="wallet-card__stat">
+                    <span class="label">Balance USD</span>
+                    <span class="value">{{ formatUsd(t.tokenBalanceUsd) }}</span>
+                  </div>
+                  <div class="wallet-card__stat">
+                    <span class="label">Buy</span>
+                    <span class="value">{{ formatUsd(t.buyUsd) }}</span>
+                  </div>
+                  <div class="wallet-card__stat">
+                    <span class="label">Sell</span>
+                    <span class="value">{{ formatUsd(t.sellUsd) }}</span>
+                  </div>
+                  <div class="wallet-card__stat">
+                    <span class="label">Net</span>
+                    <span class="value">{{ formatSignedUsd(t.netFlowUsd) }}</span>
+                  </div>
+                  <div class="wallet-card__stat">
+                    <span class="label">PnL</span>
+                    <span class="value">{{ formatSignedUsd(t.realizedPnlUsd) }}</span>
+                  </div>
+                  <div class="wallet-card__stat">
+                    <span class="label">Capital</span>
+                    <span class="value">{{ formatUsd(t.capitalDeployedUsd) }}</span>
+                  </div>
+                </div>
+                @if (!t.dataComplete && t.missingFields.length > 0) {
+                  <div class="wallet-card__error small">Missing: {{ t.missingFields.join(', ') }}</div>
+                }
+              </article>
+            }
+          </div>
+
+          <div class="table-scroll d-none d-lg-block">
+            <table cTable hover small>
+              <thead>
+                <tr>
+                  <th class="sortable" (click)="toggleSort('address')">Address{{ sortIndicator('address') }}</th>
+                  <th class="sortable" (click)="toggleSort('positionStatus')">Status{{ sortIndicator('positionStatus') }}</th>
+                  <th class="sortable text-end" (click)="toggleSort('tokenBalanceUsd')">Balance USD{{ sortIndicator('tokenBalanceUsd') }}</th>
+                  <th class="sortable text-end" (click)="toggleSort('buyUsd')">Buy{{ sortIndicator('buyUsd') }}</th>
+                  <th class="sortable text-end" (click)="toggleSort('sellUsd')">Sell{{ sortIndicator('sellUsd') }}</th>
+                  <th class="sortable text-end" (click)="toggleSort('netFlowUsd')">Net{{ sortIndicator('netFlowUsd') }}</th>
+                  <th class="sortable text-end" (click)="toggleSort('realizedPnlUsd')">PnL{{ sortIndicator('realizedPnlUsd') }}</th>
+                  <th class="sortable text-end" (click)="toggleSort('capitalDeployedUsd')">Capital{{ sortIndicator('capitalDeployedUsd') }}</th>
+                  <th class="sortable" (click)="toggleSort('dataComplete')">Data{{ sortIndicator('dataComplete') }}</th>
+                  <th>Sources</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of paginatedTraders(); track t.address) {
+                  <tr [class.table-warning]="!t.dataComplete">
+                    <td>
+                      <code class="small wallet-address" [title]="t.address">{{ shortAddress(t.address) }}</code>
+                      @if (walletExplorerUrl(data.network, t.address); as explorerUrl) {
+                        <a class="small ms-1" [href]="explorerUrl" target="_blank" rel="noopener noreferrer">↗</a>
+                      }
+                      <app-gmgn-link [network]="data.network" [address]="t.address" kind="wallet" />
+                    </td>
+                    <td>
+                      <c-badge [color]="positionStatusColors[t.positionStatus]">{{ t.positionStatus }}</c-badge>
+                    </td>
+                    <td class="text-end">{{ formatUsd(t.tokenBalanceUsd) }}</td>
+                    <td class="text-end">{{ formatUsd(t.buyUsd) }}</td>
+                    <td class="text-end">{{ formatUsd(t.sellUsd) }}</td>
+                    <td class="text-end">{{ formatSignedUsd(t.netFlowUsd) }}</td>
+                    <td class="text-end">{{ formatSignedUsd(t.realizedPnlUsd) }}</td>
+                    <td class="text-end">{{ formatUsd(t.capitalDeployedUsd) }}</td>
+                    <td>
+                      @if (t.dataComplete) {
+                        <c-badge color="success">OK</c-badge>
+                      } @else {
+                        <c-badge color="warning" [cTooltip]="t.missingFields.join(', ')">!</c-badge>
+                      }
+                    </td>
+                    <td class="small text-body-secondary">{{ t.sources.join(', ') }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (traderTotalPages() > 1) {
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 mt-3">
+              <small class="text-body-secondary">
+                {{ filteredTraders().length }} trader(s) · page {{ traderPage() }} / {{ traderTotalPages() }}
+              </small>
+              <c-pagination size="sm" class="mb-0" aria-label="Trader pages">
+                <c-page-item [disabled]="traderPage() <= 1">
+                  <button cPageLink type="button" (click)="onTraderPageChange(traderPage() - 1)">‹</button>
+                </c-page-item>
+                <c-page-item [disabled]="traderPage() >= traderTotalPages()">
+                  <button cPageLink type="button" (click)="onTraderPageChange(traderPage() + 1)">›</button>
+                </c-page-item>
+              </c-pagination>
+            </div>
+          }
+        }
+      </ng-template>
+    </c-card-body>
+  </c-card>
+
+  @if (syncing()) {
+    <div class="sync-overlay">
+      <c-spinner size="sm" />
+      <span class="small text-body-secondary ms-2">Refreshing…</span>
+    </div>
+  }
+} @else if (loading()) {
+  <div class="text-center py-5"><c-spinner /></div>
+} @else {
+  <c-alert color="secondary" class="mb-0">
+    External trader data not loaded — open this tab to sync from chain.
+  </c-alert>
+}

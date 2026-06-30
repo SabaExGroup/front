@@ -905,3 +905,134 @@ export interface CycleAnalysisResponseDto {
   economics: CycleAnalysisEconomicsDto;
   dataQuality: CycleAnalysisDataQualityDto;
 }
+
+export type ExternalTraderPositionStatus = 'OPEN' | 'CLOSED' | 'NEVER_HELD';
+export type ExitStrategy = 'MARK_TO_MARKET' | 'DUMP' | 'TWAP' | 'STEP_PROFIT';
+export type ExternalTraderDataSource =
+  | 'on_chain'
+  | 'explorer_holders'
+  | 'gmgn_holders'
+  | 'gmgn_traders'
+  | 'gmgn_activity';
+export type ExternalTraderCompleteness = 'full' | 'partial' | 'unavailable';
+
+export interface ExternalTraderSegmentSummaryDto {
+  traderCount: number;
+  buyUsd: number;
+  sellUsd: number;
+  netFlowUsd: number;
+  openPositionUsd: number;
+  tokenBalance: number;
+  realizedPnlUsd: number;
+}
+
+export interface ExternalTraderRowDto {
+  address: string;
+  positionStatus: ExternalTraderPositionStatus;
+  tokenBalance: number;
+  tokenBalanceUsd: number;
+  buyUsd: number;
+  sellUsd: number;
+  netFlowUsd: number;
+  buyCount: number;
+  sellCount: number;
+  realizedPnlUsd: number;
+  capitalDeployedUsd: number;
+  dataComplete: boolean;
+  missingFields: string[];
+  sources: ExternalTraderDataSource[];
+}
+
+export interface ExitScenarioEstimateDto {
+  strategy: ExitStrategy;
+  label: string;
+  tokenSold: number;
+  tokenSoldUsdSpot: number;
+  slippageUsd: number;
+  slippagePercent: number;
+  tokenProceedsUsd: number;
+  freeNativeUsd: number;
+  alreadyRealizedUsd: number;
+  totalFinalUsd: number;
+  batches: number;
+  durationEstimateSec: number;
+  remainingTokenUsd: number;
+  assumptions: string[];
+}
+
+export interface ExternalTraderIntelligenceTokenDto {
+  id: string;
+  address: string;
+  symbol: string;
+  priceUsd: number;
+  liquidityUsd: number;
+  marketCapUsd: number;
+  holderCount: number;
+}
+
+export interface ExternalTraderIntelligenceSummaryDto {
+  all: ExternalTraderSegmentSummaryDto;
+  openPositions: ExternalTraderSegmentSummaryDto;
+  closedPositions: ExternalTraderSegmentSummaryDto;
+  neverHeld: ExternalTraderSegmentSummaryDto;
+  totalReportedHolders: number;
+  identifiedExternalTraders: number;
+  coveragePercent: number;
+  internalWalletCount: number;
+  excludedSystemAddresses: number;
+}
+
+export interface ExternalTraderOurPositionDto {
+  freeNativeUsd: number;
+  tokenHeld: number;
+  tokenHeldUsd: number;
+  alreadyRealizedUsd: number;
+  markToMarketUsd: number;
+  ownerHeldPercent: number;
+  marketHeldPercent: number;
+}
+
+export interface ExternalTraderCoverageDto {
+  onChainHolderCount: number;
+  explorerHolderCount: number;
+  gmgnHolderRows: number;
+  gmgnTraderRows: number;
+  gmgnActivityEnriched: number;
+  mergedUniqueExternal: number;
+  reportedHolderCount: number;
+  coveragePercent: number;
+  dataCompletePercent: number;
+  completeness: ExternalTraderCompleteness;
+  isReconciled: boolean;
+  notes: string[];
+}
+
+export interface ExternalTraderReconciliationDto {
+  aggregatedExternalBuyUsd: number;
+  aggregatedExternalSellUsd: number;
+  organicFlowExternalBuyUsd: number | null;
+  organicFlowExternalSellUsd: number | null;
+  buyUsdDelta: number | null;
+  sellUsdDelta: number | null;
+  incompleteTraderCount: number;
+  incompleteOpenPositionCount: number;
+  dataCompletePercent: number;
+  isReconciled: boolean;
+  notes: string[];
+}
+
+export interface ExternalTraderIntelligenceSnapshotDto {
+  cycleId: string;
+  network: Network;
+  status: string;
+  token: ExternalTraderIntelligenceTokenDto | null;
+  summary: ExternalTraderIntelligenceSummaryDto;
+  traders: ExternalTraderRowDto[];
+  topOpenPositions: ExternalTraderRowDto[];
+  topClosedTraders: ExternalTraderRowDto[];
+  exitScenarios: ExitScenarioEstimateDto[];
+  ourPosition: ExternalTraderOurPositionDto;
+  coverage: ExternalTraderCoverageDto;
+  reconciliation: ExternalTraderReconciliationDto;
+  syncedAt: string;
+}

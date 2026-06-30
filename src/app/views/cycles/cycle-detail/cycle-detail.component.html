@@ -48,6 +48,7 @@
       <button cTab itemKey="market-balances" type="button">Market balances</button>
       <button cTab itemKey="profit" type="button">Profit</button>
       <button cTab itemKey="analysis" type="button">Analysis</button>
+      <button cTab itemKey="external-traders" type="button">External traders</button>
       <button cTab itemKey="ops" type="button">Ops</button>
     </c-tabs-list>
 
@@ -631,6 +632,15 @@
           [cycleId]="cycleId()"
           [cycleStatus]="c.status"
           [active]="activeTab() === 'analysis'"
+        />
+      </c-tab-panel>
+
+      <!-- External traders -->
+      <c-tab-panel itemKey="external-traders">
+        <app-cycle-external-traders-tab
+          [cycleId]="cycleId()"
+          [cycleStatus]="c.status"
+          [active]="activeTab() === 'external-traders'"
         />
       </c-tab-panel>
 

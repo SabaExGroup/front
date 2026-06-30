@@ -89,6 +89,16 @@
 
 .cycle-tab-nav {
   margin-bottom: 1rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.cycle-tab-nav .nav-item,
+.cycle-tab-nav button[cTab] {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .wallet-expand-row {
