@@ -59,6 +59,7 @@ import {
   CYCLE_STEPS,
   CYCLE_STATUSES,
   CycleStep,
+  isLaunchpadSupportedOnNetwork,
   isTerminalCycleStatus,
   jobStatusBadgeColor,
   LAUNCHPADS,
@@ -191,6 +192,10 @@ export class CycleDetailComponent implements OnInit {
   lastProfitJob = signal<ProfitExtractorJobResponseDto | null>(null);
   profitLoading = signal(false);
 
+  // Custom Raydium (launchpad=CUSTOM_RAYDIUM) — pool/liquidity wallet card
+  liquidityWalletBalance = signal<WalletBalanceResponseDto | null>(null);
+  private loadedLiquidityWalletId: string | null = null;
+
   // Ops
   bestLaunchpad = signal<LaunchpadRecommendationDto | null>(null);
   lastLaunch = signal<TokenLaunchResponseDto | null>(null);
@@ -263,6 +268,46 @@ export class CycleDetailComponent implements OnInit {
     this.lastLaunch.set(null);
     this.lastTrend.set(null);
     this.resumeSnapshot.set(null);
+    this.liquidityWalletBalance.set(null);
+    this.loadedLiquidityWalletId = null;
+  }
+
+  /** docs/manual-launchpad-frontend.md §1 — CUSTOM_RAYDIUM is the 5th launchpad, own pool + LP wallet. */
+  isCustomRaydiumCycle(): boolean {
+    const c = this.cycle();
+    return c?.launchpad === 'CUSTOM_RAYDIUM' || c?.token?.launchpad === 'CUSTOM_RAYDIUM';
+  }
+
+  /** Human-readable supply = totalSupply / 10^decimals (raw base-unit decimal string from API). */
+  humanTotalSupply(): number | null {
+    const token = this.cycle()?.token;
+    if (!token?.totalSupply || token.decimals == null) return null;
+    try {
+      return Number(BigInt(token.totalSupply)) / 10 ** token.decimals;
+    } catch {
+      return null;
+    }
+  }
+
+  /** CUSTOM_RAYDIUM has no public launchpad page — DexScreener is the only public view of our own pool. */
+  poolExplorerUrl(): string | null {
+    const address = this.cycle()?.token?.address;
+    if (!address) return null;
+    return `https://dexscreener.com/solana/${address}`;
+  }
+
+  isLiquidityLocked(): boolean {
+    return !this.cycle()?.token?.liquidityUnlockedAt;
+  }
+
+  private loadLiquidityWalletBalanceIfNeeded(detail: CycleDetailResponseDto): void {
+    const walletId = detail.token?.liquidityWalletId;
+    if (!walletId || walletId === this.loadedLiquidityWalletId) return;
+    this.loadedLiquidityWalletId = walletId;
+    this.wallets.getBalance(walletId).subscribe({
+      next: (bal) => this.liquidityWalletBalance.set(bal),
+      error: () => this.liquidityWalletBalance.set(null),
+    });
   }
 
   load(id: string): void {
@@ -275,6 +320,7 @@ export class CycleDetailComponent implements OnInit {
         this.loading.set(false);
         this.startPollingIfNeeded(id, detail);
         this.loadResumeSnapshot(id, detail.status);
+        this.loadLiquidityWalletBalanceIfNeeded(detail);
         if (detail.network) {
           this.generateNetwork = detail.network;
         }
@@ -591,6 +637,11 @@ export class CycleDetailComponent implements OnInit {
     return Math.min(100, Math.round((ps.heldPercent / ps.maxPercent) * 100));
   }
 
+  isLaunchpadDisabledForNetwork(lp: Launchpad): boolean {
+    const network = this.cycle()?.network;
+    return !!network && !isLaunchpadSupportedOnNetwork(lp, network);
+  }
+
   loadBestLaunchpad(): void {
     const network = this.cycle()?.network ?? 'SOLANA';
     this.opsLoading.set(true);
@@ -743,6 +794,7 @@ export class CycleDetailComponent implements OnInit {
     this.polling.set(true);
     this.pollSub = this.cycles.pollDetail(id, (updated) => {
       this.cycle.set(updated);
+      this.loadLiquidityWalletBalanceIfNeeded(updated);
       if (isTerminalCycleStatus(updated.status)) {
         this.polling.set(false);
         this.loadResumeSnapshot(id, updated.status);

@@ -36,7 +36,6 @@ import {
 import {
   BRAKE_JOB_TERMINAL,
   EmergencyBrakeScope,
-  EmergencyBrakeSellMode,
   jobStatusBadgeColor,
   treasuryPhaseBadgeColor,
 } from '../../core/models/enums';
@@ -101,7 +100,6 @@ export class EmergencyComponent implements OnInit {
 
   scope: EmergencyBrakeScope = 'GLOBAL';
   cycleId = '';
-  sellMode: EmergencyBrakeSellMode = 'TWAP';
   convertTo: 'USDC' | 'NATIVE' = 'NATIVE';
   fullDrain = false;
   reason = '';
@@ -128,6 +126,7 @@ export class EmergencyComponent implements OnInit {
   readonly treasuryPhaseBadgeColor = treasuryPhaseBadgeColor;
   readonly fundingTotalUsd = fundingTotalUsd;
   readonly withdrawalSolanaAddress = withdrawalSolanaAddress;
+  readonly withdrawalUsdDisclaimer = WITHDRAWAL_USD_DISCLAIMER;
 
   readonly usdcHealthWarnings = computed(() =>
     usdcConvertHealthWarnings(this.integrationsHealth())
@@ -353,7 +352,6 @@ export class EmergencyComponent implements OnInit {
     this.emergency.triggerBrake({
       scope: this.scope,
       cycleId: this.scope === 'CYCLE' ? this.cycleId.trim() : undefined,
-      sellMode: this.sellMode,
       convertTo: this.convertTo,
       fullDrain: this.fullDrain,
       reason: this.reason.trim(),

@@ -43,13 +43,13 @@ export function extractErrorMessage(error: unknown): string {
   if (errObj.status === 0) {
     return (
       'Cannot reach the API (network/CORS). In dev use API Base `/api/v1` and restart `npm start` ' +
-      '(proxy forwards to localhost:5420). Ensure the API is running.'
+      '(proxy forwards to http://212.64.199.144:5420). Ensure the API is running.'
     );
   }
   if (typeof errObj.message === 'string' && errObj.message.includes('Http failure during parsing')) {
     return (
       'API returned HTML instead of JSON — the dev proxy is not active. Stop and restart `npm start`, ' +
-      'then use API Base `/api/v1` (not http://localhost:5420/...).'
+      'then use API Base `/api/v1` (not http://http://212.64.199.144:5420/...).'
     );
   }
   if (errObj.error?.message) {

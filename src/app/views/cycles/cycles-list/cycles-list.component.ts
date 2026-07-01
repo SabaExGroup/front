@@ -27,7 +27,15 @@ import { CyclesService } from '../../../core/services/cycles.service';
 import { EmergencyService } from '../../../core/services/emergency.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { CycleResponseDto } from '../../../core/models/api.types';
-import { CYCLE_STATUSES, CycleStatus, LAUNCHPADS, NETWORKS, Network, Launchpad } from '../../../core/models/enums';
+import {
+  CYCLE_STATUSES,
+  CycleStatus,
+  isLaunchpadSupportedOnNetwork,
+  LAUNCHPADS,
+  Launchpad,
+  NETWORKS,
+  Network,
+} from '../../../core/models/enums';
 import { extractErrorMessage } from '../../../core/utils/error.util';
 import { NEW_CYCLE_WALLET_DETACH_WARNING } from '../../../core/utils/market-making.util';
 
@@ -153,6 +161,17 @@ export class CyclesListComponent implements OnInit {
 
   toggleStartForm(): void {
     this.showStartForm.update((v) => !v);
+  }
+
+  /** Only enforceable client-side once a specific network is chosen — "" means backend decides. */
+  isLaunchpadDisabledForNetwork(lp: Launchpad): boolean {
+    return !!this.startNetwork && !isLaunchpadSupportedOnNetwork(lp, this.startNetwork);
+  }
+
+  onStartNetworkChange(): void {
+    if (this.startLaunchpad && this.isLaunchpadDisabledForNetwork(this.startLaunchpad)) {
+      this.startLaunchpad = '';
+    }
   }
 
   startCycle(): void {

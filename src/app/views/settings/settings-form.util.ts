@@ -226,6 +226,12 @@ function buildControl(fb: FormBuilder, key: string, value: unknown): AbstractCon
   if (key === 'allowedDestinationAddresses' && Array.isArray(value)) {
     return fb.control((value as string[]).join('\n'));
   }
+  if (
+    (key === 'telegramUrlPool' || key === 'twitterUrlPool' || key === 'websiteUrlPool') &&
+    Array.isArray(value)
+  ) {
+    return fb.control((value as string[]).join('\n'));
+  }
   if (key === 'networks' && Array.isArray(value)) {
     return fb.group({
       SOLANA: fb.control((value as string[]).includes('SOLANA')),
@@ -390,6 +396,9 @@ export function validateSettingsForm(form: FormGroup): string | null {
 }
 
 export function validateSettingsState(state: Record<string, unknown>): string | null {
+  const customLaunchBlocker = validateCustomLaunchState(state);
+  if (customLaunchBlocker) return customLaunchBlocker;
+
   const treasury = state['treasury'];
   if (!isPlainObject(treasury)) return null;
 
@@ -407,6 +416,35 @@ export function validateSettingsState(state: Record<string, unknown>): string | 
       'Withdrawal Solana address is required for native profit consolidation. ' +
       'Set it under Integrations → Withdrawal wallets before saving.'
     );
+  }
+
+  return null;
+}
+
+/** docs/manual-launchpad-frontend.md §10.2 — validate before PATCH, not just on the backend. */
+function validateCustomLaunchState(state: Record<string, unknown>): string | null {
+  const strategy = state['strategy'];
+  const integrations = state['integrations'];
+  const runtime = isPlainObject(integrations) ? integrations['runtime'] : undefined;
+  const customLaunch = isPlainObject(runtime) ? runtime['customLaunch'] : undefined;
+  if (!isPlainObject(customLaunch) || !isPlainObject(strategy)) return null;
+
+  const liquidityWalletFundingSol = Number(strategy['liquidityWalletFundingSol']);
+  const initialLiquiditySol = Number(customLaunch['initialLiquiditySol']);
+  if (
+    Number.isFinite(liquidityWalletFundingSol) &&
+    Number.isFinite(initialLiquiditySol) &&
+    initialLiquiditySol >= liquidityWalletFundingSol
+  ) {
+    return (
+      'Custom Raydium: initial liquidity (SOL) must be lower than the liquidity wallet funding ' +
+      '(strategy.liquidityWalletFundingSol) — otherwise the wallet cannot cover seed + fees.'
+    );
+  }
+
+  const tokenPercent = Number(customLaunch['initialLiquidityTokenPercent']);
+  if (Number.isFinite(tokenPercent) && (tokenPercent < 1 || tokenPercent > 100)) {
+    return 'Custom Raydium: initial liquidity token % must be between 1 and 100.';
   }
 
   return null;
@@ -491,7 +529,16 @@ function formGroupToObject(control: AbstractControl): unknown {
   if (typeof value === 'string' && control.parent instanceof FormGroup) {
     const parentKey = Object.entries(control.parent.controls).find(([, c]) => c === control)?.[0];
 
-    if (parentKey === 'chatIds' || parentKey === 'telegramChatIds' || parentKey === 'allowedDestinationAddresses' || parentKey === 'tokenLabels' || parentKey === 'profileProviderBaseUrls') {
+    if (
+      parentKey === 'chatIds' ||
+      parentKey === 'telegramChatIds' ||
+      parentKey === 'allowedDestinationAddresses' ||
+      parentKey === 'tokenLabels' ||
+      parentKey === 'profileProviderBaseUrls' ||
+      parentKey === 'telegramUrlPool' ||
+      parentKey === 'twitterUrlPool' ||
+      parentKey === 'websiteUrlPool'
+    ) {
       return value.split('\n').map((s) => s.trim()).filter(Boolean);
     }
     if (parentKey === 'providerPriority') {

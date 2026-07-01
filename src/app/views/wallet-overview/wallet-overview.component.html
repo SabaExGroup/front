@@ -2,7 +2,7 @@
   <div>
     <h2 class="mb-1">Wallet Overview</h2>
     <p class="text-body-secondary small mb-0">
-      Cycle and pool wallets (MARKET + TOKEN_OWNER) — balances from DB cache or on-chain sync.
+      Cycle and pool wallets — balances from DB cache or on-chain sync.
     </p>
   </div>
   <div class="page-actions d-flex flex-wrap gap-2">
@@ -93,24 +93,13 @@
         </c-card>
       </c-col>
     }
-    @if (marketTotals(); as market) {
+    @for (item of typeTotalsList(); track item.type) {
       <c-col xs="6" md="4" xl="3">
         <c-card class="kpi-card h-100">
           <c-card-body>
-            <div class="segment-title">Market wallets</div>
-            <div class="stat-value">{{ market.totalUsd | currency }}</div>
-            <div class="small text-body-secondary mt-1">{{ market.walletCount }} wallets</div>
-          </c-card-body>
-        </c-card>
-      </c-col>
-    }
-    @if (ownerTotals(); as owners) {
-      <c-col xs="6" md="4" xl="3">
-        <c-card class="kpi-card h-100">
-          <c-card-body>
-            <div class="segment-title">Token owners</div>
-            <div class="stat-value">{{ owners.totalUsd | currency }}</div>
-            <div class="small text-body-secondary mt-1">{{ owners.walletCount }} wallets</div>
+            <div class="segment-title">{{ typeKpiLabel(item.type) }}</div>
+            <div class="stat-value">{{ item.totals.totalUsd | currency }}</div>
+            <div class="small text-body-secondary mt-1">{{ item.totals.walletCount }} wallets</div>
           </c-card-body>
         </c-card>
       </c-col>
@@ -244,7 +233,7 @@
               </div>
               <div class="wallet-card__badges mb-2">
                 <c-badge color="info">{{ w.network }}</c-badge>
-                <c-badge color="secondary">{{ w.type }}</c-badge>
+                <c-badge [color]="walletTypeBadgeColor(w.type)">{{ w.type }}</c-badge>
                 @if (w.isActive) {
                   <c-badge color="success">Active</c-badge>
                 } @else {
@@ -322,7 +311,7 @@
                     </div>
                   </td>
                   <td><c-badge color="info">{{ w.network }}</c-badge></td>
-                  <td>{{ w.type }}</td>
+                  <td><c-badge [color]="walletTypeBadgeColor(w.type)">{{ w.type }}</c-badge></td>
                   <td>
                     @if (w.cycleId) {
                       <a [routerLink]="['/cycles', w.cycleId]">

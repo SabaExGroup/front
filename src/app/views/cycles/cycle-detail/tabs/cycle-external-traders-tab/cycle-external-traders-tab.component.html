@@ -133,6 +133,10 @@
                 <span class="value">{{ data.coverage.mergedUniqueExternal }}</span>
               </div>
               <div class="metric-item">
+                <span class="label">Reported holders</span>
+                <span class="value">{{ data.coverage.reportedHolderCount }}</span>
+              </div>
+              <div class="metric-item">
                 <span class="label">Coverage %</span>
                 <span class="value">{{ data.coverage.coveragePercent | number: '1.1-1' }}%</span>
               </div>
@@ -188,6 +192,10 @@
                 <span class="label">Incomplete open</span>
                 <span class="value">{{ data.reconciliation.incompleteOpenPositionCount }}</span>
               </div>
+              <div class="metric-item">
+                <span class="label">Data complete %</span>
+                <span class="value">{{ data.reconciliation.dataCompletePercent | number: '1.1-1' }}%</span>
+              </div>
             </div>
             @if (data.reconciliation.notes.length > 0) {
               <ul class="small text-body-secondary mb-0 mt-3 ps-3">
@@ -217,6 +225,7 @@
               <div><span class="label">Net</span> {{ formatSignedUsd(data.summary[seg].netFlowUsd) }}</div>
               <div><span class="label">Open USD</span> {{ formatUsd(data.summary[seg].openPositionUsd) }}</div>
               <div><span class="label">Realized PnL</span> {{ formatSignedUsd(data.summary[seg].realizedPnlUsd) }}</div>
+              <div><span class="label">Token balance</span> {{ data.summary[seg].tokenBalance | number: '1.0-4' }}</div>
             </div>
           </c-card-body>
         </c-card>
@@ -262,6 +271,7 @@
             {{ data.summary.identifiedExternalTraders }} external of {{ data.summary.totalReportedHolders }} reported holders
             · {{ data.summary.coveragePercent | number: '1.1-1' }}% coverage
             · {{ data.summary.internalWalletCount }} internal filtered
+            · {{ data.summary.excludedSystemAddresses }} system address(es) excluded
           </div>
         </c-card-body>
       </c-card>

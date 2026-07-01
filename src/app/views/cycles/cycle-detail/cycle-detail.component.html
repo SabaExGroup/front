@@ -239,6 +239,77 @@
               </c-card>
             }
 
+            @if (isCustomRaydiumCycle()) {
+              <c-card class="mb-4">
+                <c-card-header class="d-flex justify-content-between align-items-center">
+                  <strong>Custom Raydium Pool</strong>
+                  <c-badge color="info">Pool: Raydium CPMM</c-badge>
+                </c-card-header>
+                <c-card-body>
+                  @if (isLiquidityLocked()) {
+                    <c-badge color="success" class="mb-2">🔒 Liquidity Locked</c-badge>
+                  } @else {
+                    <c-badge color="warning" class="mb-2">🔓 Unlocked — swept</c-badge>
+                  }
+                  <dl class="meta-list mb-0">
+                    @if (poolExplorerUrl(); as url) {
+                      <dt>Pool</dt>
+                      <dd>
+                        <a class="external-social-link" [href]="url" target="_blank" rel="noopener noreferrer">
+                          DexScreener <span class="external-social-link__icon" aria-hidden="true">↗</span>
+                        </a>
+                      </dd>
+                    }
+                    @if (c.token?.poolAddress) {
+                      <dt>Pool address</dt><dd><code class="small text-break">{{ c.token?.poolAddress }}</code></dd>
+                    }
+                    @if (c.token?.lpMint) {
+                      <dt>LP mint</dt><dd><code class="small text-break">{{ c.token?.lpMint }}</code></dd>
+                    }
+                    @if (humanTotalSupply() != null) {
+                      <dt>Supply</dt><dd>{{ humanTotalSupply() | number }} (decimals: {{ c.token?.decimals }})</dd>
+                    }
+                    <dt>Mint authority</dt>
+                    <dd>
+                      @if (c.token?.mintAuthorityRevoked) {
+                        <c-badge color="success">Revoked ✅</c-badge>
+                      } @else {
+                        <c-badge color="secondary">Not revoked</c-badge>
+                      }
+                    </dd>
+                    <dt>Freeze authority</dt>
+                    <dd>
+                      @if (c.token?.freezeAuthorityRevoked) {
+                        <c-badge color="success">Revoked ✅</c-badge>
+                      } @else {
+                        <c-badge color="secondary">Not revoked</c-badge>
+                      }
+                    </dd>
+                    @if (c.token?.liquidityLockedAt) {
+                      <dt>Locked at</dt><dd>{{ c.token?.liquidityLockedAt | date: 'medium' }}</dd>
+                    }
+                    @if (c.token?.liquidityUnlockedAt) {
+                      <dt>Unlocked at</dt><dd>{{ c.token?.liquidityUnlockedAt | date: 'medium' }}</dd>
+                    }
+                  </dl>
+                </c-card-body>
+              </c-card>
+
+              @if (c.token?.liquidityWalletId) {
+                <c-card class="mb-4">
+                  <c-card-header><strong>Liquidity Wallet</strong></c-card-header>
+                  <c-card-body>
+                    <code class="small d-block text-break">{{ liquidityWalletBalance()?.address ?? c.token?.liquidityWalletId }}</code>
+                    @if (liquidityWalletBalance(); as bal) {
+                      <div class="mt-2">{{ bal.balanceNative }} SOL @if (bal.balanceUsd != null) { ({{ bal.balanceUsd | currency }}) }</div>
+                    } @else {
+                      <div class="small text-body-secondary mt-2">Balance is native SOL only — LP value is not counted here.</div>
+                    }
+                  </c-card-body>
+                </c-card>
+              }
+            }
+
             @if (c.trendPackage; as trend) {
               <c-card class="mb-4">
                 <c-card-header class="d-flex justify-content-between align-items-center">
@@ -692,8 +763,12 @@
                   <c-col md="6" class="mb-3">
                     <label cLabel>Launchpad override</label>
                     <select cSelect [(ngModel)]="opsLaunchpad">
-                      <option value="">Auto</option>
-                      @for (lp of launchpadOptions; track lp) { <option [value]="lp">{{ lp }}</option> }
+                      <option value="">Cycle's launchpad (from LAUNCHPAD_SELECTION)</option>
+                      @for (lp of launchpadOptions; track lp) {
+                        <option [value]="lp" [disabled]="isLaunchpadDisabledForNetwork(lp)">
+                          {{ lp === 'CUSTOM_RAYDIUM' ? 'Custom Raydium (manual)' : lp }}
+                        </option>
+                      }
                     </select>
                   </c-col>
                   <c-col md="6" class="mb-3 d-flex align-items-end">

@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { TimeoutError } from 'rxjs';
 import {
   AlertComponent,
   BadgeComponent,
@@ -18,7 +18,7 @@ import {
   TableDirective,
 } from '@coreui/angular';
 import { GmgnQuickLinkComponent } from '../../shared/components/gmgn-quick-link/gmgn-quick-link.component';
-import { TokenOwnerPoolService, PREFUND_POLL_TIMEOUT_MS } from '../../core/services/token-owner-pool.service';
+import { TokenOwnerPoolService, PREFUND_TIMEOUT_MS } from '../../core/services/token-owner-pool.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { WalletsService } from '../../core/services/wallets.service';
 import { ToastService } from '../../shared/services/toast.service';
@@ -99,13 +99,13 @@ export class TokenOwnerPoolComponent implements OnInit {
   prefundError = signal<string | null>(null);
   lastPrefundByWalletId = signal<Record<string, PrefundTokenOwnerResponse>>({});
   private prefundTimer?: ReturnType<typeof setInterval>;
-  private prefundPollSub?: Subscription;
-  private prefundPollTimeout?: ReturnType<typeof setTimeout>;
 
   readonly shortAddress = shortAddress;
   readonly walletExplorerUrl = walletExplorerUrl;
   readonly ownerFundingStatusLabel = ownerFundingStatusLabel;
   readonly ownerFundingStatusBadgeColor = ownerFundingStatusBadgeColor;
+  /** POST prefund is synchronous server-side — used to show the client timeout to the operator. */
+  readonly prefundTimeoutMinutes = Math.round(PREFUND_TIMEOUT_MS / 60_000);
 
   readyCount = computed(() =>
     this.pool().filter((w) => w.isLaunchReady === true || this.walletStatus(w) === 'ready').length
@@ -115,7 +115,6 @@ export class TokenOwnerPoolComponent implements OnInit {
     this.loadSettings();
     this.destroyRef.onDestroy(() => {
       this.stopPrefundTimer();
-      this.stopPrefundBalancePoll();
     });
   }
 
@@ -328,6 +327,11 @@ export class TokenOwnerPoolComponent implements OnInit {
     });
   }
 
+  /**
+   * `POST prefund` blocks server-side until ChangeNOW finishes (docs/ui-token-owner-wallet-pool.md
+   * §3.3) — the response already carries the final balance/status, so we just wait for the single
+   * HTTP call (bounded by `PREFUND_TIMEOUT_MS` in the service) instead of polling afterwards.
+   */
   private executePrefund(walletId: string): void {
     this.prefunding.set(true);
     this.prefundError.set(null);
@@ -335,76 +339,23 @@ export class TokenOwnerPoolComponent implements OnInit {
 
     this.poolService.prefund({ network: this.network, walletId }).subscribe({
       next: (response) => {
-        if (response.alreadyFunded) {
-          this.finishPrefund(response);
-          return;
-        }
-        this.startPrefundBalancePoll(response);
+        this.finishPrefund(response);
       },
       error: (err) => {
         this.prefunding.set(false);
         this.stopPrefundTimer();
+        if (err instanceof TimeoutError) {
+          this.prefundError.set('Prefund timed out — funding may still be in progress');
+          this.toast.error('Prefund timed out — check wallet balance or main fee wallet (Treasury)');
+          this.loadPool();
+          return;
+        }
         this.handlePoolError(err, true);
       },
     });
   }
 
-  private startPrefundBalancePoll(initial: PrefundTokenOwnerResponse): void {
-    this.stopPrefundBalancePoll();
-
-    this.prefundPollTimeout = setTimeout(() => {
-      this.stopPrefundBalancePoll();
-      this.prefunding.set(false);
-      this.stopPrefundTimer();
-      this.prefundError.set('Prefund timed out — funding may still be in progress');
-      this.toast.error('Prefund timed out — check wallet balance or main fee wallet (Treasury)');
-      this.loadPool();
-    }, PREFUND_POLL_TIMEOUT_MS);
-
-    this.prefundPollSub = this.poolService.pollWalletLaunchReady(
-      initial.walletId,
-      (balance) => {
-        if (balance.balanceUsd != null) {
-          this.pool.update((rows) =>
-            rows.map((row) =>
-              row.id === initial.walletId
-                ? {
-                    ...row,
-                    balanceUsd: balance.balanceUsd ?? row.balanceUsd,
-                    isLaunchReady: balance.isLaunchReady ?? row.isLaunchReady,
-                  }
-                : row
-            )
-          );
-        }
-        if (balance.isLaunchReady) {
-          this.stopPrefundBalancePoll();
-          this.finishPrefund({
-            ...initial,
-            balanceUsd: balance.balanceUsd ?? initial.balanceUsd,
-          });
-        }
-      },
-      (err) => {
-        this.stopPrefundBalancePoll();
-        this.prefunding.set(false);
-        this.stopPrefundTimer();
-        this.handlePoolError(err, true);
-      }
-    );
-  }
-
-  private stopPrefundBalancePoll(): void {
-    this.prefundPollSub?.unsubscribe();
-    this.prefundPollSub = undefined;
-    if (this.prefundPollTimeout) {
-      clearTimeout(this.prefundPollTimeout);
-      this.prefundPollTimeout = undefined;
-    }
-  }
-
   private finishPrefund(response: PrefundTokenOwnerResponse): void {
-    this.stopPrefundBalancePoll();
     this.prefunding.set(false);
     this.stopPrefundTimer();
     this.lastPrefundByWalletId.update((map) => ({ ...map, [response.walletId]: response }));

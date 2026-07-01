@@ -3,7 +3,6 @@ import {
   CycleStatus,
   CycleStep,
   EmergencyBrakeScope,
-  EmergencyBrakeSellMode,
   JobStatus,
   Launchpad,
   Network,
@@ -41,10 +40,28 @@ export interface CycleLogEntryDto {
   at: string;
 }
 
-export interface CycleTokenInfo {
+/**
+ * Extra fields present on `token` only when `launchpad === 'CUSTOM_RAYDIUM'` — null/undefined
+ * for every other launchpad. See docs/manual-launchpad-frontend.md §5.
+ */
+export interface CustomLaunchTokenFields {
+  totalSupply?: string | null;
+  decimals?: number | null;
+  mintAuthorityRevoked?: boolean | null;
+  freezeAuthorityRevoked?: boolean | null;
+  poolAddress?: string | null;
+  lpMint?: string | null;
+  poolTxHash?: string | null;
+  liquidityWalletId?: string | null;
+  liquidityLockedAt?: string | null;
+  liquidityUnlockedAt?: string | null;
+}
+
+export interface CycleTokenInfo extends CustomLaunchTokenFields {
   address?: string;
   name?: string;
   symbol?: string;
+  launchpad?: Launchpad;
 }
 
 export interface CycleTrendPackage {
@@ -183,10 +200,10 @@ export interface EmergencyHaltStatusResponseDto {
   emergencyLock?: string;
 }
 
+/** docs/frontend-emergency-treasury.md §3.2 — exact body accepted by POST /emergency/brake. */
 export interface ManualBrakeDto {
   scope: EmergencyBrakeScope;
   cycleId?: string;
-  sellMode?: EmergencyBrakeSellMode;
   convertTo?: ConvertTo;
   fullDrain?: boolean;
   reason: string;
@@ -203,7 +220,6 @@ export interface EmergencyBrakeResponseDto {
   drainJobId?: string;
   status: string;
   mode?: string;
-  sellMode?: EmergencyBrakeSellMode;
   scope?: EmergencyBrakeScope;
   cycleId?: string;
   convertTo?: ConvertTo;
@@ -217,7 +233,6 @@ export interface EmergencyBrakeJobDetailDto {
   jobId: string;
   status: string;
   mode?: string;
-  sellMode?: EmergencyBrakeSellMode;
   scope?: EmergencyBrakeScope;
   cycleId?: string;
   drainJobId?: string;
@@ -571,6 +586,10 @@ export interface TreasuryConsolidateDto {
   networks?: Network[];
   destinationAddress: string | { SOLANA?: string; BSC?: string };
   convertTo?: ConvertTo;
+  /**
+   * docs/frontend-emergency-treasury.md §5 — present in swagger but NOT implemented in the
+   * backend. Never send this from the UI; keep the type only for shape completeness.
+   */
   includeMainFeeWallet?: boolean;
   sellAllTokens?: boolean;
   minSweepUsd?: number;

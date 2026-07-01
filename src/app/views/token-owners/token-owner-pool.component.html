@@ -74,7 +74,8 @@
             <div>
               <strong>Funding in progress…</strong>
               <div class="small">
-                Prefund queued — polling wallet balance until launch ready. Elapsed: {{ prefundElapsedLabel() }} — do not close this page.
+                Prefund is synchronous — the backend waits for ChangeNOW to complete (up to {{ prefundTimeoutMinutes }} min).
+                Elapsed: {{ prefundElapsedLabel() }} — do not close this page.
               </div>
             </div>
           </div>

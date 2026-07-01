@@ -23,8 +23,9 @@ import {
   MainFeeWalletResponseDto,
   SystemWalletBalanceRowDto,
   SystemWalletBalancesResponseDto,
+  SystemWalletTypeTotalsDto,
 } from '../../core/models/api.types';
-import { NETWORKS, Network, WALLET_TYPES, WalletType } from '../../core/models/enums';
+import { NETWORKS, Network, WALLET_TYPES, WalletType, walletTypeBadgeColor } from '../../core/models/enums';
 import { ToastService } from '../../shared/services/toast.service';
 import { extractErrorMessage } from '../../core/utils/error.util';
 import {
@@ -74,6 +75,7 @@ export class WalletOverviewComponent implements OnInit {
   readonly walletTypeOptions = WALLET_TYPES;
   readonly shortAddress = shortAddress;
   readonly walletExplorerUrl = walletExplorerUrl;
+  readonly walletTypeBadgeColor = walletTypeBadgeColor;
   readonly fundingTotalUsd = fundingTotalUsd;
   readonly withdrawalSolanaAddress = withdrawalSolanaAddress;
 
@@ -88,8 +90,22 @@ export class WalletOverviewComponent implements OnInit {
 
   readonly solanaTotals = computed(() => this.balances()?.totalsByNetwork?.SOLANA ?? null);
   readonly bscTotals = computed(() => this.balances()?.totalsByNetwork?.BSC ?? null);
-  readonly marketTotals = computed(() => this.balances()?.totalsByType?.MARKET ?? null);
-  readonly ownerTotals = computed(() => this.balances()?.totalsByType?.TOKEN_OWNER ?? null);
+
+  /**
+   * Generic per-type KPI list — iterates over whatever keys the backend returns in
+   * `totalsByType` (docs/wallet-overview.md) instead of hardcoding MARKET/TOKEN_OWNER, so new
+   * wallet types (e.g. LIQUIDITY) render automatically without a UI change. Types with no
+   * wallets are hidden, matching the doc's rule for the LIQUIDITY card.
+   */
+  readonly typeTotalsList = computed<{ type: string; totals: SystemWalletTypeTotalsDto }[]>(() => {
+    const totalsByType = this.balances()?.totalsByType;
+    if (!totalsByType) {
+      return [];
+    }
+    return Object.entries(totalsByType)
+      .filter(([, totals]) => totals.walletCount > 0)
+      .map(([type, totals]) => ({ type, totals }));
+  });
 
   ngOnInit(): void {
     this.load();
@@ -158,6 +174,16 @@ export class WalletOverviewComponent implements OnInit {
 
   nativeUnit(network: Network): string {
     return network === 'SOLANA' ? 'SOL' : 'BNB';
+  }
+
+  /** Human label for a `totalsByType` key — generic so unseen future wallet types still read well. */
+  typeKpiLabel(type: string): string {
+    if (type === 'TOKEN_OWNER') {
+      return 'Token owners';
+    }
+    const words = type.toLowerCase().split('_');
+    const titled = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return `${titled} wallets`;
   }
 
   syncStatusLabel(wallet: SystemWalletBalanceRowDto): string {

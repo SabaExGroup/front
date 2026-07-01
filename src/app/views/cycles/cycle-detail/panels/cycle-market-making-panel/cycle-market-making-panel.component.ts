@@ -138,6 +138,17 @@ export class CycleMarketMakingPanelComponent {
     return this.opsLoading() || this.balanceSyncing();
   }
 
+  /**
+   * GMGN takes a few ticks to index a freshly-created pool (mainly CUSTOM_RAYDIUM / letsbonk).
+   * Show an info note instead of implying an error when marketCap/volume read as zero right after start.
+   */
+  isMarketDataSyncing(): boolean {
+    const md = this.marketDetail();
+    if (!md || !this.isRunning()) return false;
+    const noMetricsYet = !md.marketCapUsd && !md.volumeUsd;
+    return noMetricsYet && this.tradesExecuted() < 3;
+  }
+
   refreshSession(options?: { silent404?: boolean }): void {
     const cycleId = this.cycleId();
     if (!cycleId) {

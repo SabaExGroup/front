@@ -72,6 +72,12 @@
     </c-alert>
   }
 
+  <c-alert color="info" class="mb-3 small">
+    <strong>Resolve priority (per launch).</strong>
+    Twitter: auto X search via FxTwitter (most followers wins) → X API v2 (only if Bearer token set) → random from Twitter pool → synthetic <code>x.com/&#123;symbol&#125;</code>.
+    Telegram / Website: random from pool → synthetic fallback. Reusing the same URL across cycles is fine — dedup is disabled.
+  </c-alert>
+
   <c-tabs [activeItemKey]="activeTab()" (activeItemKeyChange)="onTabChange($event)">
     <c-tabs-list variant="tabs" class="social-tab-nav mb-4">
       @for (tab of tabs; track tab.id) {

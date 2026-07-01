@@ -44,6 +44,7 @@
           <div class="stat-value">{{ mainFeeWallet()?.withdrawalTotalUsd | currency }}</div>
           <div class="text-body-secondary small">Withdrawal (profit)</div>
           <div class="mt-2 small text-body-secondary">SOL + BNB on withdrawal wallets</div>
+          <div class="mt-1 small text-body-secondary">{{ withdrawalUsdDisclaimer }}</div>
         </c-card-body>
       </c-card>
     </c-col>
@@ -96,17 +97,25 @@
         <c-row>
           <c-col md="3" class="mb-3">
             <label cLabel>Network</label>
-            <select cSelect [(ngModel)]="startNetwork">
+            <select cSelect [(ngModel)]="startNetwork" (ngModelChange)="onStartNetworkChange()">
               <option value="">Auto (from settings)</option>
               @for (n of networkOptions; track n) { <option [value]="n">{{ n }}</option> }
             </select>
           </c-col>
           <c-col md="3" class="mb-3">
-            <label cLabel>Force launchpad</label>
+            <label cLabel>Launchpad</label>
             <select cSelect [(ngModel)]="startLaunchpad">
-              <option value="">Auto</option>
-              @for (lp of launchpadOptions; track lp) { <option [value]="lp">{{ lp }}</option> }
+              <option value="">System default (currently Custom Raydium)</option>
+              @for (lp of launchpadOptions; track lp) {
+                <option [value]="lp" [disabled]="isLaunchpadDisabledForNetwork(lp)">
+                  {{ lp === 'CUSTOM_RAYDIUM' ? 'Custom Raydium (manual)' : lp }}
+                </option>
+              }
             </select>
+            <small class="text-body-secondary d-block">
+              Empty = <code>strategy.defaultLaunchpad</code>. Custom Raydium/letsbonk/Pump.fun ⇒
+              Solana only, Four.meme ⇒ BSC only.
+            </small>
           </c-col>
           <c-col md="6" class="mb-3 d-flex align-items-end gap-3 flex-wrap">
             <c-form-check>
@@ -351,6 +360,7 @@
                   <dt>BNB</dt><dd>{{ w.balanceBnb }}</dd>
                   <dt>Withdrawal USD</dt><dd class="fw-semibold">{{ w.withdrawalTotalUsd | currency }}</dd>
                 </dl>
+                <p class="small text-body-secondary mt-2 mb-0">{{ withdrawalUsdDisclaimer }}</p>
               </c-col>
             </c-row>
           }

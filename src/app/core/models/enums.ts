@@ -27,8 +27,24 @@ export type Network = (typeof NETWORKS)[number];
 export const TOKEN_SENTIMENTS = ['BULLISH', 'BEARISH', 'NEUTRAL'] as const;
 export type TokenSentiment = (typeof TOKEN_SENTIMENTS)[number];
 
-export const LAUNCHPADS = ['PUMP_FUN', 'FOUR_MEME', 'LETS_BONK'] as const;
+export const LAUNCHPADS = ['PUMP_FUN', 'FOUR_MEME', 'LETS_BONK', 'CUSTOM_RAYDIUM'] as const;
 export type Launchpad = (typeof LAUNCHPADS)[number];
+
+/** `strategy.defaultLaunchpad` accepts every real Launchpad plus `AUTO` (score-based auto-selection). */
+export const DEFAULT_LAUNCHPAD_MODES = [...LAUNCHPADS, 'AUTO'] as const;
+export type DefaultLaunchpadMode = (typeof DEFAULT_LAUNCHPAD_MODES)[number];
+
+/** CUSTOM_RAYDIUM is our own pool — only Solana is supported (no BSC equivalent). */
+export const LAUNCHPAD_NETWORKS: Record<Launchpad, readonly Network[]> = {
+  PUMP_FUN: ['SOLANA'],
+  LETS_BONK: ['SOLANA'],
+  CUSTOM_RAYDIUM: ['SOLANA'],
+  FOUR_MEME: ['BSC'],
+};
+
+export function isLaunchpadSupportedOnNetwork(launchpad: Launchpad, network: Network): boolean {
+  return LAUNCHPAD_NETWORKS[launchpad]?.includes(network) ?? true;
+}
 
 export const EMERGENCY_BRAKE_SCOPES = ['GLOBAL', 'CYCLE'] as const;
 export type EmergencyBrakeScope = (typeof EMERGENCY_BRAKE_SCOPES)[number];
@@ -58,8 +74,22 @@ export const BRAKE_JOB_TERMINAL = [
   'DRAINED_HALTED',
 ] as const;
 
-export const WALLET_TYPES = ['TOKEN_OWNER', 'MARKET'] as const;
+/** LIQUIDITY only appears on cycles launched with launchpad=CUSTOM_RAYDIUM (custodial LP holder, 1 per cycle). */
+export const WALLET_TYPES = ['TOKEN_OWNER', 'MARKET', 'LIQUIDITY'] as const;
 export type WalletType = (typeof WALLET_TYPES)[number];
+
+export function walletTypeBadgeColor(type: WalletType): string {
+  switch (type) {
+    case 'TOKEN_OWNER':
+      return 'info';
+    case 'MARKET':
+      return 'secondary';
+    case 'LIQUIDITY':
+      return 'primary';
+    default:
+      return 'secondary';
+  }
+}
 
 export const WALLET_POOL_STRATEGIES = ['FRESH', 'REUSE', 'AUTO'] as const;
 export type WalletPoolStrategy = (typeof WALLET_POOL_STRATEGIES)[number];

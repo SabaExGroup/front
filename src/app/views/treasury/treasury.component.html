@@ -46,6 +46,7 @@
             <dt>Withdrawal USD</dt>
             <dd class="fw-semibold">{{ w.withdrawalTotalUsd | currency }}</dd>
           </dl>
+          <p class="small text-body-secondary mt-2 mb-0">{{ withdrawalUsdDisclaimer }}</p>
         </c-card-body>
       </c-card>
     </c-col>
@@ -150,6 +151,10 @@
                   <textarea cFormControl rows="2" [(ngModel)]="drainReason" placeholder="Optional operator note"></textarea>
                 </c-col>
               </c-row>
+              <p class="small text-body-secondary mb-0">
+                Also unlocks and sweeps any active LIQUIDITY wallets from CUSTOM_RAYDIUM cycles before
+                inventory scan.
+              </p>
             </c-card-body>
           </c-card>
 
@@ -303,6 +308,11 @@
                   <textarea cFormControl rows="3" [(ngModel)]="drainReason" placeholder="Optional operator note"></textarea>
                 </c-col>
               </c-row>
+              <c-alert color="info" class="small mb-3">
+                Full drain also unlocks and sweeps any active LIQUIDITY wallets from custom launchpad
+                (CUSTOM_RAYDIUM) cycles before scanning inventory — LP value is recovered too, not just
+                MARKET/TOKEN_OWNER balances.
+              </c-alert>
               <button cButton color="warning" [disabled]="running() || lifecycleJobInProgress()" (click)="drainOnly()">
                 @if (running()) { <c-spinner size="sm" /> } @else { Drain wallets }
               </button>
@@ -491,6 +501,10 @@
                   <textarea cFormControl rows="2" [(ngModel)]="consolidateReason" placeholder="Optional operator note"></textarea>
                 </c-col>
               </c-row>
+              <c-alert color="info" class="small mb-3">
+                Consolidate never touches LIQUIDITY wallets (custom launchpad pool LP) — unlocking and
+                selling locked liquidity is only supported via Emergency Brake or Treasury Drain.
+              </c-alert>
               <button cButton color="secondary" [disabled]="running()" (click)="runConsolidate()">
                 @if (running()) { <c-spinner size="sm" /> } @else { Start consolidate }
               </button>

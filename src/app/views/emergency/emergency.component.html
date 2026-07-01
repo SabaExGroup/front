@@ -33,6 +33,7 @@
             <dt>Withdrawal USD (approx)</dt>
             <dd>{{ w.withdrawalTotalUsd | currency }}</dd>
           </dl>
+          <p class="small text-body-secondary mt-2 mb-0">{{ withdrawalUsdDisclaimer }}</p>
         </c-card-body>
       </c-card>
     }
@@ -103,14 +104,6 @@
           </div>
         }
 
-        <div class="mb-3">
-          <label cLabel>Sell mode</label>
-          <select cSelect [(ngModel)]="sellMode">
-            <option value="TWAP">TWAP (staggered — uses Strategy → Emergency Brake tuning)</option>
-            <option value="DUMP">DUMP (instant parallel sell-off)</option>
-          </select>
-        </div>
-
         @if (convertTo === 'USDC' && usdcHealthWarnings().length) {
           <c-alert color="warning" class="small mb-3">
             @for (warning of usdcHealthWarnings(); track warning) {
@@ -156,6 +149,12 @@
             placeholder="operator panic — explain why"
           ></textarea>
         </div>
+
+        <c-alert color="info" class="small mb-3">
+          If an active cycle uses the custom launchpad (CUSTOM_RAYDIUM), its liquidity wallet is
+          automatically unlocked, sold and swept to the withdrawal wallet as well — no separate
+          action needed.
+        </c-alert>
 
         @if (brakeInProgress()) {
           <c-alert color="warning" class="small mb-3">
@@ -271,9 +270,6 @@
           @if (job.mode) {
             <c-badge color="secondary">{{ job.mode }}</c-badge>
           }
-          @if (job.sellMode) {
-            <c-badge color="secondary">{{ job.sellMode }}</c-badge>
-          }
           <button cButton color="light" size="sm" class="ms-auto" type="button" (click)="refreshBrakeJob()">
             Refresh
           </button>
@@ -291,11 +287,6 @@
                   · <code>{{ job.cycleId }}</code>
                 }
               </dd>
-            }
-
-            @if (job.sellMode) {
-              <dt>Sell mode</dt>
-              <dd>{{ job.sellMode }}</dd>
             }
 
             @if (job.walletsAffected != null) {

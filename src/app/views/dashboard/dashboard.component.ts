@@ -3,7 +3,7 @@ import { Component, DestroyRef, effect, inject, OnInit, signal } from '@angular/
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, Subscription, switchMap, timer } from 'rxjs';
+import { catchError, EMPTY, forkJoin, Subscription, switchMap, timer } from 'rxjs';
 import {
   AlertComponent,
   BadgeComponent,
@@ -38,7 +38,7 @@ import {
   RpcChainHealthDto,
   RpcHealthResponseDto,
 } from '../../core/models/api.types';
-import { LAUNCHPADS, Launchpad, NETWORKS, Network } from '../../core/models/enums';
+import { isLaunchpadSupportedOnNetwork, LAUNCHPADS, Launchpad, NETWORKS, Network } from '../../core/models/enums';
 import { extractErrorMessage, formatApiError } from '../../core/utils/error.util';
 import { NEW_CYCLE_WALLET_DETACH_WARNING } from '../../core/utils/market-making.util';
 import {
@@ -112,6 +112,7 @@ export class DashboardComponent implements OnInit {
   readonly NEW_CYCLE_WALLET_DETACH_WARNING = NEW_CYCLE_WALLET_DETACH_WARNING;
   readonly fundingTotalUsd = fundingTotalUsd;
   readonly withdrawalSolanaAddress = withdrawalSolanaAddress;
+  readonly withdrawalUsdDisclaimer = WITHDRAWAL_USD_DISCLAIMER;
 
   private fastPollSub?: Subscription;
   private slowPollSub?: Subscription;
@@ -127,24 +128,24 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     this.loadAll();
 
+    // docs §7 — poll must keep running at its interval even if a single tick fails;
+    // catchError swallows the tick's error so switchMap/timer aren't torn down.
     this.fastPollSub = timer(30_000, 30_000)
       .pipe(
-        switchMap(() => this.fetchFastBundle()),
+        switchMap(() => this.fetchFastBundle().pipe(catchError(() => EMPTY))),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (data) => this.applyFastBundle(data),
-        error: () => { /* silent poll */ },
       });
 
     this.slowPollSub = timer(60_000, 60_000)
       .pipe(
-        switchMap(() => this.fetchSlowBundle()),
+        switchMap(() => this.fetchSlowBundle().pipe(catchError(() => EMPTY))),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: (data) => this.applySlowBundle(data),
-        error: () => { /* silent poll */ },
       });
 
     this.destroyRef.onDestroy(() => {
@@ -227,6 +228,17 @@ export class DashboardComponent implements OnInit {
     this.showStartForm.update((v) => !v);
   }
 
+  /** Only enforceable client-side once a specific network is chosen — "" means backend decides. */
+  isLaunchpadDisabledForNetwork(lp: Launchpad): boolean {
+    return !!this.startNetwork && !isLaunchpadSupportedOnNetwork(lp, this.startNetwork);
+  }
+
+  onStartNetworkChange(): void {
+    if (this.startLaunchpad && this.isLaunchpadDisabledForNetwork(this.startLaunchpad)) {
+      this.startLaunchpad = '';
+    }
+  }
+
   navigateWithConfirm(path: '/emergency' | '/treasury', label: string): void {
     if (!confirm(`Open ${label}? These are high-impact operational pages.`)) return;
     void this.router.navigate([path]);
@@ -274,37 +286,10 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  /** docs §۷ — jupiter must appear for Solana USDC convert health */
-  private static readonly INTEGRATION_PROVIDER_ORDER = [
-    'jupiter',
-    'changenow',
-  ] as const;
-
+  /** docs §5.1 — GET /integrations/health providers: gmgn, dexscreener, solanaRpc */
   providerEntries(): { key: string; value: IntegrationProbeResultDto }[] {
     const providers = this.integrationsHealth()?.providers ?? {};
-    const entries: { key: string; value: IntegrationProbeResultDto }[] = [];
-    const seen = new Set<string>();
-
-    for (const key of DashboardComponent.INTEGRATION_PROVIDER_ORDER) {
-      seen.add(key);
-      entries.push({
-        key,
-        value: providers[key] ?? {
-          status: 'unknown',
-          message: key === 'jupiter'
-            ? 'Not reported — required for Solana USDC convert'
-            : 'Not reported by health API',
-        },
-      });
-    }
-
-    for (const [key, value] of Object.entries(providers)) {
-      if (!seen.has(key)) {
-        entries.push({ key, value });
-      }
-    }
-
-    return entries;
+    return Object.entries(providers).map(([key, value]) => ({ key, value }));
   }
 
   rpcChains(): { name: string; chain: RpcChainHealthDto }[] {

@@ -159,6 +159,7 @@ export class TreasuryComponent implements OnInit {
   readonly treasuryPhaseBadgeColor = treasuryPhaseBadgeColor;
   readonly fundingTotalUsd = fundingTotalUsd;
   readonly withdrawalSolanaAddress = withdrawalSolanaAddress;
+  readonly withdrawalUsdDisclaimer = WITHDRAWAL_USD_DISCLAIMER;
 
   readonly usdcHealthWarnings = computed(() =>
     usdcConvertHealthWarnings(this.integrationsHealth())

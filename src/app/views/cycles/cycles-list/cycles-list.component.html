@@ -56,7 +56,7 @@
             <c-row>
               <c-col md="3" class="mb-3">
                 <label cLabel>Network</label>
-                <select cSelect [(ngModel)]="startNetwork">
+                <select cSelect [(ngModel)]="startNetwork" (ngModelChange)="onStartNetworkChange()">
                   <option value="">Auto (from settings)</option>
                   @for (n of networkOptions; track n) {
                     <option [value]="n">{{ n }}</option>
@@ -64,13 +64,19 @@
                 </select>
               </c-col>
               <c-col md="3" class="mb-3">
-                <label cLabel>Force launchpad</label>
+                <label cLabel>Launchpad</label>
                 <select cSelect [(ngModel)]="startLaunchpad">
-                  <option value="">Auto</option>
+                  <option value="">System default (currently Custom Raydium)</option>
                   @for (lp of launchpadOptions; track lp) {
-                    <option [value]="lp">{{ lp }}</option>
+                    <option [value]="lp" [disabled]="isLaunchpadDisabledForNetwork(lp)">
+                      {{ lp === 'CUSTOM_RAYDIUM' ? 'Custom Raydium (manual)' : lp }}
+                    </option>
                   }
                 </select>
+                <small class="text-body-secondary">
+                  Empty = use <code>strategy.defaultLaunchpad</code> (Settings → Strategy). Custom
+                  Raydium and letsbonk/Pump.fun only support Solana; Four.meme only supports BSC.
+                </small>
               </c-col>
               <c-col md="6" class="mb-3 d-flex align-items-end gap-3 flex-wrap">
                 <c-form-check>

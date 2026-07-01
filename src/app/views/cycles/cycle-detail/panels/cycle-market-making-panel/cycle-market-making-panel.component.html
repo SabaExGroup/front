@@ -82,6 +82,13 @@
       </button>
     </div>
 
+    @if (isMarketDataSyncing()) {
+      <c-alert color="info" class="mb-3 small">
+        Syncing market data… pool metrics may read as zero for the first few ticks right after
+        launch (GMGN indexing delay) — this is expected, not an error.
+      </c-alert>
+    }
+
     @if (marketDetail(); as md) {
       <dl class="meta-list mb-0" [class.meta-list--compact]="compact()">
         <dt>Session</dt>

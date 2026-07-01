@@ -14,8 +14,11 @@
   "openaiModel": "gpt-5.5",
   "trendStyleDefault": "controversial",
   "strategy": {
+    "defaultLaunchpad": "CUSTOM_RAYDIUM",
     "ownerLaunchFundingUsd": 550,
     "tokenOwnerReuseEnabled": true,
+    "liquidityWalletFundingSol": 2.3,
+    "liquidityWalletReuseEnabled": false,
     "mode": "BLITZ",
     "targetPriceChangePercent": 320,
     "targetPriceChangePercentMin": 150,
@@ -106,6 +109,24 @@
       "blockedHoursUtc": [4, 5, 6, 7, 8, 9, 10],
       "minMinutesBetweenCycles": 90,
       "maxCyclesPerDay": 3
+    },
+    "organicTimeline": {
+      "enabled": true,
+      "preEntryDelaySeconds": 10,
+      "organicOpenerEndSeconds": 45,
+      "botMagnetEndSeconds": 90,
+      "organicMaxBuys": 8,
+      "organicBuyDelayMinMs": 4000,
+      "organicBuyDelayMaxMs": 10000,
+      "magnetBuyDelayMinMs": 3000,
+      "magnetBuyDelayMaxMs": 8000,
+      "magnetTradesPerMinute": 90,
+      "magnetBuyBiasPercent": 74,
+      "magnetMinHoldBeforeSellSeconds": 45,
+      "magnetWalletCooldownSeconds": 20,
+      "organicWalletCooldownSeconds": 30,
+      "organicMinHoldBeforeSellSeconds": 120,
+      "blitzMinGraceSeconds": 90
     },
     "trendFinder": {
       "symbolLookbackDays": 30,
@@ -281,6 +302,20 @@
         "defaultBuySol": 0.01,
         "pool": "raydium",
         "priorityFeeSol": 0.0001
+      },
+      "customLaunch": {
+        "totalSupply": "1000000000000000",
+        "decimals": 6,
+        "initialLiquiditySol": 2,
+        "initialLiquidityTokenPercent": 80,
+        "feeConfigIndex": 0,
+        "slippageBps": 700,
+        "emergencySlippageBps": 2500,
+        "priorityFeeMicroLamports": 100000,
+        "computeUnitLimit": 600000,
+        "sellerFeeBasisPoints": 0,
+        "devBuySol": 0.25,
+        "httpTimeoutMs": 60000
       },
       "openai": {
         "chatTimeoutMs": 60000,
