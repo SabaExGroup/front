@@ -478,6 +478,8 @@ export class EmergencyComponent implements OnInit {
       cycleId: res.cycleId,
       drainJobId: res.drainJobId,
       walletsAffected: res.walletsAffected,
+      liquidityWalletsUnlocking: res.liquidityWalletsUnlocking,
+      ownerLiquidityWalletsUnlocking: res.ownerLiquidityWalletsUnlocking,
       systemHalted: res.systemHalted,
       message: res.message,
     });

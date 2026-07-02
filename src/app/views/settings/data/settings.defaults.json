@@ -313,10 +313,12 @@
         "emergencySlippageBps": 2500,
         "priorityFeeMicroLamports": 100000,
         "computeUnitLimit": 600000,
-        "sellerFeeBasisPoints": 0,
-        "devBuySol": 0.25,
-        "httpTimeoutMs": 60000
-      },
+      "sellerFeeBasisPoints": 0,
+      "devBuySol": 0.25,
+      "httpTimeoutMs": 60000,
+      "autoLockOwnerLiquidity": false,
+      "ownerLiquidityLockSolBuffer": 1
+    },
       "openai": {
         "chatTimeoutMs": 60000,
         "imageTimeoutMs": 600000,
@@ -390,6 +392,7 @@
         "maxDiscoveryUsers": 24,
         "profileLookupConcurrency": 4,
         "maxUsernamesPerRequest": 100,
+        "socialLookupTimeoutMs": 20000,
         "profileProviderBaseUrls": [
           "https://api.fxtwitter.com",
           "https://api.vxtwitter.com"

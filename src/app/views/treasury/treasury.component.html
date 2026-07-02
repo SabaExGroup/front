@@ -153,7 +153,8 @@
               </c-row>
               <p class="small text-body-secondary mb-0">
                 Also unlocks and sweeps any active LIQUIDITY wallets from CUSTOM_RAYDIUM cycles before
-                inventory scan.
+                inventory scan — including any TOKEN_OWNER liquidity locked via Owner Liquidity
+                Auto-Lock.
               </p>
             </c-card-body>
           </c-card>
@@ -311,7 +312,8 @@
               <c-alert color="info" class="small mb-3">
                 Full drain also unlocks and sweeps any active LIQUIDITY wallets from custom launchpad
                 (CUSTOM_RAYDIUM) cycles before scanning inventory — LP value is recovered too, not just
-                MARKET/TOKEN_OWNER balances.
+                MARKET/TOKEN_OWNER balances. Any TOKEN_OWNER liquidity locked via Owner Liquidity
+                Auto-Lock is unlocked the same way.
               </c-alert>
               <button cButton color="warning" [disabled]="running() || lifecycleJobInProgress()" (click)="drainOnly()">
                 @if (running()) { <c-spinner size="sm" /> } @else { Drain wallets }

@@ -153,7 +153,8 @@
         <c-alert color="info" class="small mb-3">
           If an active cycle uses the custom launchpad (CUSTOM_RAYDIUM), its liquidity wallet is
           automatically unlocked, sold and swept to the withdrawal wallet as well — no separate
-          action needed.
+          action needed. If Owner Liquidity Auto-Lock is enabled for that token, the TOKEN_OWNER
+          liquidity position is unlocked and swept at the same time.
         </c-alert>
 
         @if (brakeInProgress()) {
@@ -292,6 +293,16 @@
             @if (job.walletsAffected != null) {
               <dt>Wallets affected</dt>
               <dd>{{ job.walletsAffected }}</dd>
+            }
+
+            @if (job.liquidityWalletsUnlocking) {
+              <dt>Liquidity wallets unlocking</dt>
+              <dd>{{ job.liquidityWalletsUnlocking }} (CUSTOM_RAYDIUM LP)</dd>
+            }
+
+            @if (job.ownerLiquidityWalletsUnlocking) {
+              <dt>Owner liquidity wallets unlocking</dt>
+              <dd>{{ job.ownerLiquidityWalletsUnlocking }} (Owner Liquidity Auto-Lock)</dd>
             }
 
             @if (job.systemHalted != null) {

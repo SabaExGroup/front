@@ -68,6 +68,26 @@ describe('settings-schema.util', () => {
 
       expect(jupiter?.title).toBe('Jupiter Runtime');
     });
+
+    it('exposes Owner Liquidity Auto-Lock fields on the customLaunch section (docs/ui-owner-liquidity-auto-lock.md §2)', () => {
+      const sections = generateRuntimeSections();
+      const keys = sectionFieldKeys(sections);
+
+      expect(keys).toContain('integrations.runtime.customLaunch.autoLockOwnerLiquidity');
+      expect(keys).toContain('integrations.runtime.customLaunch.ownerLiquidityLockSolBuffer');
+
+      const customLaunch = sections.find((section) => section.path === 'integrations.runtime.customLaunch');
+      const buffer = customLaunch?.fields.find((f) => f.key === 'ownerLiquidityLockSolBuffer');
+      expect(buffer?.type).toBe('number');
+      expect(buffer?.min).toBe(0);
+    });
+
+    it('exposes xTwitter socialLookupTimeoutMs (docs/ui-trend-social-links.md §2)', () => {
+      const sections = generateRuntimeSections();
+      const keys = sectionFieldKeys(sections);
+
+      expect(keys).toContain('integrations.runtime.xTwitter.socialLookupTimeoutMs');
+    });
   });
 
   describe('generateTreasurySections', () => {

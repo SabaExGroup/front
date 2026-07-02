@@ -300,6 +300,21 @@ export class CycleDetailComponent implements OnInit {
     return !this.cycle()?.token?.liquidityUnlockedAt;
   }
 
+  /** docs/ui-owner-liquidity-auto-lock.md §5.1 — null lockedAt means the switch was off or the lock failed (best-effort). */
+  hasOwnerLiquidityLock(): boolean {
+    return !!this.cycle()?.token?.ownerLiquidityLockedAt;
+  }
+
+  isOwnerLiquidityLocked(): boolean {
+    const token = this.cycle()?.token;
+    return !!token?.ownerLiquidityLockedAt && !token?.ownerLiquidityUnlockedAt;
+  }
+
+  ownerLiquidityTxUrl(): string | null {
+    const hash = this.cycle()?.token?.ownerLiquidityLockTxHash;
+    return hash ? `https://solscan.io/tx/${hash}` : null;
+  }
+
   private loadLiquidityWalletBalanceIfNeeded(detail: CycleDetailResponseDto): void {
     const walletId = detail.token?.liquidityWalletId;
     if (!walletId || walletId === this.loadedLiquidityWalletId) return;

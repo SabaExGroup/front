@@ -55,6 +55,14 @@ export interface CustomLaunchTokenFields {
   liquidityWalletId?: string | null;
   liquidityLockedAt?: string | null;
   liquidityUnlockedAt?: string | null;
+  /**
+   * Owner Liquidity Auto-Lock (opt-in via integrations.runtime.customLaunch.autoLockOwnerLiquidity).
+   * Always null when the switch is off or for non-CUSTOM_RAYDIUM launchpads.
+   * See docs/ui-owner-liquidity-auto-lock.md §5.1.
+   */
+  ownerLiquidityLockedAt?: string | null;
+  ownerLiquidityUnlockedAt?: string | null;
+  ownerLiquidityLockTxHash?: string | null;
 }
 
 export interface CycleTokenInfo extends CustomLaunchTokenFields {
@@ -225,6 +233,10 @@ export interface EmergencyBrakeResponseDto {
   convertTo?: ConvertTo;
   fullDrain?: boolean;
   walletsAffected?: number;
+  /** CUSTOM_RAYDIUM LIQUIDITY wallets unlocked+swept as part of this brake — docs/manual-launchpad-frontend.md §7.2. */
+  liquidityWalletsUnlocking?: number;
+  /** Owner Liquidity Auto-Lock tokens unlocked as part of this brake — docs/ui-owner-liquidity-auto-lock.md §5.2. */
+  ownerLiquidityWalletsUnlocking?: number;
   systemHalted?: boolean;
   message?: string;
 }
@@ -237,6 +249,8 @@ export interface EmergencyBrakeJobDetailDto {
   cycleId?: string;
   drainJobId?: string;
   walletsAffected?: number;
+  liquidityWalletsUnlocking?: number;
+  ownerLiquidityWalletsUnlocking?: number;
   systemHalted?: boolean;
   message?: string;
   progress?: EmergencyBrakeProgressDto;

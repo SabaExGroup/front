@@ -115,6 +115,8 @@ const FIELD_HINTS: Record<string, string> = {
   'integrations.runtime.customLaunch.initialLiquiditySol': 'SOL seeded into the Raydium pool at launch — must stay below strategy.liquidityWalletFundingSol',
   'integrations.runtime.customLaunch.initialLiquidityTokenPercent': '% of total supply that enters the pool (1-100) — remainder goes to TOKEN_OWNER (dev buy / distribution)',
   'integrations.runtime.customLaunch.devBuySol': 'Initial TOKEN_OWNER buy right after launch (best-effort) — 0 disables dev buy',
+  'integrations.runtime.customLaunch.autoLockOwnerLiquidity': 'Opt-in — when enabled, TOKEN_OWNER\'s full token balance (mint share + dev buy) is deposited as extra liquidity into the pool right after launch (best-effort, never fails the launch). CUSTOM_RAYDIUM only — see docs/ui-owner-liquidity-auto-lock.md',
+  'integrations.runtime.customLaunch.ownerLiquidityLockSolBuffer': 'Extra SOL added to TOKEN_OWNER funding to cover the matching SOL side of the owner liquidity deposit. Applies to ALL Solana cycles while the switch is on (not just CUSTOM_RAYDIUM) — unused buffer is never lost, it just sits on the wallet until the next drain/consolidate. Suggested range 0.3–3, default 1. Too low increases lock failure risk',
   'strategy.emergencyBrake.sellConcurrency': 'Max parallel sell txs during TWAP brake',
   'strategy.emergencyBrake.sellStaggerMsMin': 'Min delay between sell batches (ms)',
   'strategy.emergencyBrake.sellStaggerMsMax': 'Max delay between sell batches (ms)',
@@ -127,6 +129,7 @@ const FIELD_HINTS: Record<string, string> = {
   'strategy.botCascade.buyBiasBoostPercent': 'Extra buy bias % while cascade is active',
   'strategy.botCascade.pauseSellsSeconds': 'Pause market sells for this many seconds at cascade start',
   'integrations.runtime.xTwitter.profileProviderBaseUrls': 'FxTwitter then VxTwitter fallback — one URL per line (DevOps)',
+  'integrations.runtime.xTwitter.socialLookupTimeoutMs': 'Max time spent auto-searching Twitter before falling back to the social pool / synthetic links — never blocks the cycle',
   'integrations.mainFeeWalletEvmPrivateKey': 'Must match GET /main-fee-wallet fundingAddress',
   'integrations.runtime.trade.providerPriority': 'gmgn, dexscreener, changenow',
 };
@@ -198,6 +201,10 @@ function buildFieldsForObject(obj: Record<string, unknown>, basePath: string): S
       if (key === 'marketWalletCount') {
         field.min = 50;
         field.max = 300;
+      }
+      if (key === 'ownerLiquidityLockSolBuffer') {
+        field.min = 0;
+        field.step = 0.1;
       }
     }
 

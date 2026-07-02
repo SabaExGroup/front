@@ -115,6 +115,27 @@ describe('settings-form.util', () => {
       expect(payload.integrations?.['openaiApiKey']).toBe('sk-test-new-key');
     });
 
+    it('diffs Owner Liquidity Auto-Lock fields under integrations.runtime.customLaunch (docs/ui-owner-liquidity-auto-lock.md §2.3)', () => {
+      const apiSnapshot = buildSettingsApiResponse();
+      const form = buildSettingsForm(fb, apiSnapshot);
+
+      form.get('integrations.runtime.customLaunch.autoLockOwnerLiquidity')?.setValue(true);
+      form.get('integrations.runtime.customLaunch.ownerLiquidityLockSolBuffer')?.setValue(1.5);
+
+      const payload = formToDirtyUpdatePayload(form, apiSnapshot);
+
+      expect(payload).toEqual({
+        integrations: {
+          runtime: {
+            customLaunch: {
+              autoLockOwnerLiquidity: true,
+              ownerLiquidityLockSolBuffer: 1.5,
+            },
+          },
+        },
+      });
+    });
+
     it('strips includeMainFeeWalletByDefault from treasury consolidate', () => {
       const apiSnapshot = buildSettingsApiResponse();
       const form = buildSettingsForm(fb, apiSnapshot);
@@ -328,6 +349,9 @@ describe('settings-form.util', () => {
       expect(form.get('treasury.lifecycle.minRearmBalanceUsd')?.value).toBe(4500);
       expect(form.get('integrations.runtime.pumpFun.ipfsGatewayUrl')?.value).toBe('https://ipfs.io/ipfs');
       expect(form.get('integrations.withdrawalUsdtProfitAddress')?.value).toBe('');
+      expect(form.get('integrations.runtime.customLaunch.autoLockOwnerLiquidity')?.value).toBe(false);
+      expect(form.get('integrations.runtime.customLaunch.ownerLiquidityLockSolBuffer')?.value).toBe(1);
+      expect(form.get('integrations.runtime.xTwitter.socialLookupTimeoutMs')?.value).toBe(20000);
     });
 
     it('round-trips unchanged defaults to empty dirty payload', () => {

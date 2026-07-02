@@ -292,6 +292,34 @@
                       <dt>Unlocked at</dt><dd>{{ c.token?.liquidityUnlockedAt | date: 'medium' }}</dd>
                     }
                   </dl>
+
+                  @if (hasOwnerLiquidityLock()) {
+                    <hr class="my-3" />
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <strong class="small">Owner Liquidity Auto-Lock</strong>
+                      @if (isOwnerLiquidityLocked()) {
+                        <c-badge color="success">🔒 Owner Liquidity Locked</c-badge>
+                      } @else {
+                        <c-badge color="warning">🔓 Owner Liquidity Unlocked — swept</c-badge>
+                      }
+                    </div>
+                    <dl class="meta-list mb-0">
+                      @if (ownerLiquidityTxUrl(); as url) {
+                        <dt>Lock tx</dt>
+                        <dd>
+                          <a class="external-social-link" [href]="url" target="_blank" rel="noopener noreferrer">
+                            Solscan <span class="external-social-link__icon" aria-hidden="true">↗</span>
+                          </a>
+                        </dd>
+                      }
+                      @if (c.token?.ownerLiquidityLockedAt) {
+                        <dt>Owner locked at</dt><dd>{{ c.token?.ownerLiquidityLockedAt | date: 'medium' }}</dd>
+                      }
+                      @if (c.token?.ownerLiquidityUnlockedAt) {
+                        <dt>Owner unlocked at</dt><dd>{{ c.token?.ownerLiquidityUnlockedAt | date: 'medium' }}</dd>
+                      }
+                    </dl>
+                  }
                 </c-card-body>
               </c-card>
 
