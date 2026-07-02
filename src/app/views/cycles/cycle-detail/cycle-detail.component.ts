@@ -89,6 +89,8 @@ import { CycleAnalysisTabComponent } from './tabs/cycle-analysis-tab/cycle-analy
 import { CycleExternalTradersTabComponent } from './tabs/cycle-external-traders-tab/cycle-external-traders-tab.component';
 import { CycleMarketBalancesTabComponent } from './tabs/cycle-market-balances-tab/cycle-market-balances-tab.component';
 import { CycleMarketMakingPanelComponent } from './panels/cycle-market-making-panel/cycle-market-making-panel.component';
+import { ManualSellCardComponent } from './panels/manual-sell-card/manual-sell-card.component';
+import { LiquidityUnlockCardComponent } from './panels/liquidity-unlock-card/liquidity-unlock-card.component';
 import { isManualMarketMakingLive } from '../../../core/utils/market-making.util';
 
 type CycleTab = 'overview' | 'wallets' | 'market-balances' | 'profit' | 'analysis' | 'external-traders' | 'ops';
@@ -133,6 +135,8 @@ type CycleTab = 'overview' | 'wallets' | 'market-balances' | 'profit' | 'analysi
     CycleExternalTradersTabComponent,
   CycleMarketBalancesTabComponent,
   CycleMarketMakingPanelComponent,
+  ManualSellCardComponent,
+  LiquidityUnlockCardComponent,
   GmgnQuickLinkComponent,
   ],
 })

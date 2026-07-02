@@ -1,0 +1,197 @@
+<c-card class="liquidity-unlock-card mb-4">
+  <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <strong>Liquidity unlock</strong>
+    @if (job(); as j) {
+      <c-badge [color]="jobStatusBadgeColor(j.status)">{{ j.status }}</c-badge>
+    }
+  </c-card-header>
+
+  <c-card-body>
+    @if (isHalted()?.halted) {
+      <c-alert color="danger" class="mb-3">
+        <strong>System halted</strong>
+        @if (isHalted()?.halt?.reason) {
+          — {{ isHalted()?.halt?.reason }}
+        }
+        <div class="mt-2">
+          <a cButton color="danger" variant="outline" size="sm" routerLink="/emergency">Open Emergency · Resume</a>
+        </div>
+      </c-alert>
+    }
+
+    <div class="mb-3">
+      <label cLabel>Source</label>
+      <div class="d-flex flex-wrap gap-3 mt-1">
+        @for (t of targets; track t) {
+          <c-form-check inline>
+            <input
+              cFormCheckInput
+              type="radio"
+              name="liquidity-unlock-target"
+              [id]="'target-' + t"
+              [value]="t"
+              [checked]="target() === t"
+              (change)="target.set(t)"
+              [disabled]="isBusy() || !!isHalted()?.halted"
+            />
+            <label cFormCheckLabel [for]="'target-' + t">{{ targetLabel(t) }}</label>
+          </c-form-check>
+        }
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label cLabel>Unlock percent (of each leg's current LP balance)</label>
+      <input
+        cFormControl
+        type="number"
+        min="0.01"
+        max="100"
+        step="0.01"
+        [ngModel]="percent()"
+        (ngModelChange)="percent.set($event)"
+        [disabled]="isBusy() || !!isHalted()?.halted"
+      />
+    </div>
+
+    <div class="mb-3">
+      <label cLabel>Slippage override (bps, optional — 1-2000)</label>
+      <input
+        cFormControl
+        type="number"
+        min="1"
+        max="2000"
+        step="1"
+        [ngModel]="slippageBpsOverride()"
+        (ngModelChange)="slippageBpsOverride.set($event || null)"
+        [disabled]="isBusy() || !!isHalted()?.halted"
+        placeholder="Uses strategy.manualLiquidityUnlock.defaultSlippageBps"
+      />
+    </div>
+
+    <div class="mb-3">
+      <label cLabel>Reason (optional, for operator logs)</label>
+      <input
+        cFormControl
+        [ngModel]="reason()"
+        (ngModelChange)="reason.set($event)"
+        [disabled]="isBusy() || !!isHalted()?.halted"
+        maxlength="500"
+      />
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <button
+        cButton
+        color="light"
+        size="sm"
+        type="button"
+        [disabled]="isBusy() || !!isHalted()?.halted"
+        (click)="runPreview()"
+      >
+        @if (previewLoading()) { <c-spinner size="sm" /> } @else { Preview }
+      </button>
+      <button
+        cButton
+        color="danger"
+        size="sm"
+        type="button"
+        [disabled]="isBusy() || isHalted()?.halted || !preview()"
+        (click)="confirmAndExecute()"
+      >
+        @if (executing()) { <c-spinner size="sm" /> } @else { Unlock {{ percent() }}% }
+      </button>
+    </div>
+
+    @if (preview(); as p) {
+      <div class="mb-3">
+        <div class="small text-body-secondary mb-1">
+          Resolved: {{ p.resolvedTargets.join(', ') }}
+          @if (p.resolvedTargets.length === 1 && p.requestedTarget !== p.resolvedTargets[0]) {
+            — only one leg is currently eligible
+          }
+        </div>
+        <table class="table table-sm mb-2">
+          <thead>
+            <tr>
+              <th>Leg</th>
+              <th>LP balance</th>
+              <th>Withdraw</th>
+              <th>SOL out</th>
+              <th>Token out</th>
+              <th>Fully unlocked?</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (leg of p.breakdown; track leg.target) {
+              <tr>
+                <td>{{ leg.target }}</td>
+                <td class="small">{{ leg.lpBalanceRaw }}</td>
+                <td class="small">{{ leg.lpAmountToWithdrawRaw }}</td>
+                <td>{{ leg.estimatedSolOut }}</td>
+                <td>{{ leg.estimatedTokenOut }}</td>
+                <td>
+                  @if (leg.fullyUnlockedAfter) {
+                    <c-badge color="success">yes</c-badge>
+                  } @else {
+                    <c-badge color="secondary">no</c-badge>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <div class="small fw-semibold">
+          Total: {{ p.totalEstimatedSolOut }} SOL + {{ p.totalEstimatedTokenOut }} tokens · slippage {{ p.slippageBps / 100 }}%
+          · expires {{ p.expiresAt | date: 'mediumTime' }}
+        </div>
+      </div>
+      @if (isPreviewStale()) {
+        <c-alert color="warning" class="small mb-3">
+          Preview is stale (inputs changed or it expired) — click Unlock to fetch a fresh preview.
+        </c-alert>
+      }
+    }
+
+    @if (job(); as j) {
+      <div class="mb-2">
+        <div class="small text-body-secondary mb-1">
+          Requested: {{ j.requestedTarget }} · Resolved: {{ j.resolvedTargets.join(', ') }}
+        </div>
+        <table class="table table-sm mb-2">
+          <thead>
+            <tr>
+              <th>Leg</th>
+              <th>Status</th>
+              <th>Withdrawn</th>
+              <th>Tx</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (leg of j.breakdown; track leg.target) {
+              <tr>
+                <td>{{ leg.target }}</td>
+                <td><c-badge [color]="jobStatusBadgeColor(leg.status)">{{ leg.status }}</c-badge></td>
+                <td class="small">{{ leg.lpAmountWithdrawnRaw ?? '—' }}</td>
+                <td class="small">
+                  @if (leg.txHash) { <code>{{ leg.txHash }}</code> } @else { — }
+                  @if (leg.errorMessage) { <div class="text-danger">{{ leg.errorMessage }}</div> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        @if (j.status === 'PARTIAL') {
+          <c-alert color="warning" class="small mb-0">
+            Partial — retry the failed leg with a new preview using target = POOL or OWNER (not BOTH/AUTO).
+          </c-alert>
+        }
+      </div>
+    }
+
+    <p class="small text-body-secondary mt-3 mb-0">
+      CUSTOM_RAYDIUM only. Does not halt the system. Percent applies to each leg's <em>current</em> LP balance
+      independently — repeated unlocks compound, they don't sum linearly.
+    </p>
+  </c-card-body>
+</c-card>

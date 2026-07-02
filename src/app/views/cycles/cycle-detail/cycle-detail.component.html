@@ -874,6 +874,20 @@
             }
           </c-col>
         </c-row>
+
+        <c-row class="g-4 mt-1">
+          <c-col lg="4">
+            <app-manual-sell-card [cycleId]="c.id" resource="MARKET" />
+          </c-col>
+          <c-col lg="4">
+            <app-manual-sell-card [cycleId]="c.id" resource="TOKEN_OWNER" />
+          </c-col>
+          @if (isCustomRaydiumCycle()) {
+            <c-col lg="4">
+              <app-liquidity-unlock-card [cycleId]="c.id" />
+            </c-col>
+          }
+        </c-row>
       </c-tab-panel>
     </c-tabs-content>
   </c-tabs>

@@ -1,0 +1,126 @@
+<c-card class="manual-sell-card mb-4">
+  <c-card-header class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <strong>Manual sell — {{ resourceLabel() }}</strong>
+    @if (job(); as j) {
+      <c-badge [color]="jobStatusBadgeColor(j.status)">{{ j.status }}</c-badge>
+    }
+  </c-card-header>
+
+  <c-card-body>
+    @if (isHalted()?.halted) {
+      <c-alert color="danger" class="mb-3">
+        <strong>System halted</strong>
+        @if (isHalted()?.halt?.reason) {
+          — {{ isHalted()?.halt?.reason }}
+        }
+        <div class="mt-2">
+          <a cButton color="danger" variant="outline" size="sm" routerLink="/emergency">Open Emergency · Resume</a>
+        </div>
+      </c-alert>
+    }
+
+    <div class="mb-3">
+      <label cLabel>Sell percent (of each eligible wallet's balance)</label>
+      <input
+        cFormControl
+        type="number"
+        min="0.01"
+        max="100"
+        step="0.01"
+        [ngModel]="percent()"
+        (ngModelChange)="percent.set($event)"
+        [disabled]="isBusy() || !!isHalted()?.halted"
+      />
+    </div>
+
+    <div class="mb-3">
+      <label cLabel>Slippage override (bps, optional — 1-2000)</label>
+      <input
+        cFormControl
+        type="number"
+        min="1"
+        max="2000"
+        step="1"
+        [ngModel]="slippageBpsOverride()"
+        (ngModelChange)="slippageBpsOverride.set($event || null)"
+        [disabled]="isBusy() || !!isHalted()?.halted"
+        placeholder="Uses strategy.manualSell.defaultSlippageBps"
+      />
+    </div>
+
+    <div class="mb-3">
+      <label cLabel>Reason (optional, for operator logs)</label>
+      <input
+        cFormControl
+        [ngModel]="reason()"
+        (ngModelChange)="reason.set($event)"
+        [disabled]="isBusy() || !!isHalted()?.halted"
+        maxlength="500"
+      />
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <button
+        cButton
+        color="light"
+        size="sm"
+        type="button"
+        [disabled]="isBusy() || !!isHalted()?.halted"
+        (click)="runPreview()"
+      >
+        @if (previewLoading()) { <c-spinner size="sm" /> } @else { Preview }
+      </button>
+      <button
+        cButton
+        color="danger"
+        size="sm"
+        type="button"
+        [disabled]="isBusy() || isHalted()?.halted || !preview()"
+        (click)="confirmAndExecute()"
+      >
+        @if (executing()) { <c-spinner size="sm" /> } @else { Sell {{ percent() }}% }
+      </button>
+    </div>
+
+    @if (preview(); as p) {
+      <dl class="meta-list mb-3">
+        <dt>Wallets eligible</dt><dd>{{ p.walletsEligible }}</dd>
+        <dt>Balance before</dt><dd>{{ p.balanceBeforeTokens }} tokens</dd>
+        <dt>Target amount</dt><dd>{{ p.targetTokens }} tokens</dd>
+        @if (p.estimatedUsdValue != null) {
+          <dt>Est. USD value</dt><dd>${{ p.estimatedUsdValue.toFixed(2) }}</dd>
+        }
+        <dt>Slippage used</dt><dd>{{ p.slippageBps / 100 }}%</dd>
+        <dt>Expires</dt><dd>{{ p.expiresAt | date: 'mediumTime' }}</dd>
+      </dl>
+      @if (isPreviewStale()) {
+        <c-alert color="warning" class="small mb-3">
+          Preview is stale (inputs changed or it expired) — click Sell to fetch a fresh preview.
+        </c-alert>
+      }
+    }
+
+    @if (job(); as j) {
+      <dl class="meta-list mb-0">
+        <dt>Job ID</dt><dd><code class="small">{{ j.jobId }}</code></dd>
+        <dt>Wallets</dt>
+        <dd>{{ j.walletsSold }} sold · {{ j.walletsFailed }} failed / {{ j.walletsTotal }} total</dd>
+        @if (j.tokensSold != null) { <dt>Tokens sold</dt><dd>{{ j.tokensSold }}</dd> }
+        @if (j.usdRecovered != null) { <dt>USD recovered</dt><dd>${{ j.usdRecovered.toFixed(2) }}</dd> }
+        @if (j.errorMessage) { <dt>Error</dt><dd class="text-danger">{{ j.errorMessage }}</dd> }
+        @if (j.txHashes?.length) {
+          <dt>Tx hashes</dt>
+          <dd>
+            <ul class="small mb-0 ps-3">
+              @for (tx of j.txHashes; track tx) { <li><code>{{ tx }}</code></li> }
+            </ul>
+          </dd>
+        }
+      </dl>
+    }
+
+    <p class="small text-body-secondary mt-3 mb-0">
+      Does not halt the system — market making continues. Preview tokens expire 120 seconds after being issued.
+    </p>
+  </c-card-body>
+</c-card>

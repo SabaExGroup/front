@@ -5,6 +5,8 @@ import {
   EmergencyBrakeScope,
   JobStatus,
   Launchpad,
+  LiquidityUnlockTarget,
+  ManualSellResource,
   Network,
   RetryMode,
   TokenSentiment,
@@ -18,6 +20,8 @@ export interface HttpErrorMessageDto {
   message: string | string[];
   error?: string;
   statusCode?: number;
+  /** Present on domain errors raised by ManualOpsException and subclasses — docs/manual-sell-liquidity-frontend.md §2.5. */
+  code?: string;
 }
 
 export interface HttpErrorResponseDto {
@@ -237,6 +241,10 @@ export interface EmergencyBrakeResponseDto {
   liquidityWalletsUnlocking?: number;
   /** Owner Liquidity Auto-Lock tokens unlocked as part of this brake — docs/ui-owner-liquidity-auto-lock.md §5.2. */
   ownerLiquidityWalletsUnlocking?: number;
+  /** BullMQ job id for the native-token chain drain triggered by this brake, when applicable — docs/ui-owner-liquidity-auto-lock.md §5.2. */
+  chainDrainJobId?: string | null;
+  /** Whether native balances were swept to the withdrawal wallet as part of this brake — docs/ui-owner-liquidity-auto-lock.md §5.2. */
+  sweepNativeToWithdrawal?: boolean;
   systemHalted?: boolean;
   message?: string;
 }
@@ -251,6 +259,8 @@ export interface EmergencyBrakeJobDetailDto {
   walletsAffected?: number;
   liquidityWalletsUnlocking?: number;
   ownerLiquidityWalletsUnlocking?: number;
+  chainDrainJobId?: string | null;
+  sweepNativeToWithdrawal?: boolean;
   systemHalted?: boolean;
   message?: string;
   progress?: EmergencyBrakeProgressDto;
@@ -1110,4 +1120,152 @@ export interface ExternalTraderIntelligenceSnapshotDto {
   coverage: ExternalTraderCoverageDto;
   reconciliation: ExternalTraderReconciliationDto;
   syncedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Manual Ops — docs/manual-sell-liquidity-frontend.md
+// Cycle 1/2 (POST /manual-ops/sell/*) + cycle 3 (POST /manual-ops/liquidity-unlock/*)
+// ---------------------------------------------------------------------------
+
+export type ManualOpsJobStatus = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'PARTIAL' | 'FAILED';
+
+/** docs §3.1 — POST /manual-ops/sell/preview */
+export interface ManualSellPreviewDto {
+  cycleId: string;
+  resource: ManualSellResource;
+  percent: number;
+  slippageBps?: number;
+}
+
+/** docs §3.1 — ManualSellPreviewResponseDto */
+export interface ManualSellPreviewResponseDto {
+  cycleId: string;
+  tokenId: string;
+  resource: ManualSellResource;
+  percent: number;
+  walletsEligible: number;
+  balanceBeforeTokens: string;
+  targetTokens: string;
+  estimatedUsdValue?: number;
+  slippageBps: number;
+  confirmationToken: string;
+  expiresAt: string;
+}
+
+/** docs §3.2 — POST /manual-ops/sell/execute */
+export interface ManualSellExecuteDto {
+  confirmationToken: string;
+  cycleId: string;
+  resource: ManualSellResource;
+  percent: number;
+  reason?: string;
+}
+
+/** docs §3.2 — ManualSellJobResponseDto */
+export interface ManualSellJobResponseDto {
+  jobId: string;
+  status: ManualOpsJobStatus;
+}
+
+/** docs §3.3 — GET /manual-ops/sell/:jobId → ManualSellJobDetailDto */
+export interface ManualSellJobDetailDto {
+  jobId: string;
+  status: ManualOpsJobStatus;
+  cycleId: string;
+  tokenId: string;
+  resource: ManualSellResource;
+  requestedPercent: number;
+  balanceBeforeTokens: string;
+  targetTokens: string;
+  walletsTotal: number;
+  walletsSold: number;
+  walletsFailed: number;
+  tokensSold?: string;
+  usdRecovered?: number;
+  txHashes?: string[];
+  errorMessage?: string;
+  durationMs?: number;
+  createdAt: string;
+  completedAt?: string;
+}
+
+/** docs §5.2 — POST /manual-ops/liquidity-unlock/preview */
+export interface LiquidityUnlockPreviewDto {
+  cycleId: string;
+  target: LiquidityUnlockTarget;
+  percent: number;
+  slippageBps?: number;
+}
+
+/** docs §5.2 — one entry per resolved leg (POOL/OWNER) in a preview response */
+export interface LiquidityUnlockLegPreviewDto {
+  target: 'POOL' | 'OWNER';
+  poolAddress: string;
+  lpBalanceRaw: string;
+  lpAmountToWithdrawRaw: string;
+  lpBalanceAfterRaw: string;
+  fullyUnlockedAfter: boolean;
+  estimatedSolOut: number;
+  estimatedTokenOut: number;
+}
+
+/** docs §5.2 — LiquidityUnlockPreviewResponseDto */
+export interface LiquidityUnlockPreviewResponseDto {
+  cycleId: string;
+  tokenId: string;
+  requestedTarget: LiquidityUnlockTarget;
+  resolvedTargets: ('POOL' | 'OWNER')[];
+  percent: number;
+  breakdown: LiquidityUnlockLegPreviewDto[];
+  totalEstimatedSolOut: number;
+  totalEstimatedTokenOut: number;
+  slippageBps: number;
+  confirmationToken: string;
+  expiresAt: string;
+}
+
+/** docs §5.3 — POST /manual-ops/liquidity-unlock/execute */
+export interface LiquidityUnlockExecuteDto {
+  confirmationToken: string;
+  cycleId: string;
+  target: LiquidityUnlockTarget;
+  percent: number;
+  reason?: string;
+}
+
+/** docs §5.3 — LiquidityUnlockJobResponseDto */
+export interface LiquidityUnlockJobResponseDto {
+  jobId: string;
+  status: ManualOpsJobStatus;
+}
+
+/** docs §5.4 — one entry per leg (POOL/OWNER) in a job status response */
+export interface LiquidityUnlockLegResultDto {
+  target: 'POOL' | 'OWNER';
+  poolAddress: string;
+  lpBalanceBeforeRaw: string;
+  lpAmountToWithdrawRaw: string;
+  lpAmountWithdrawnRaw?: string;
+  fullyUnlocked?: boolean;
+  estimatedSolOut?: number;
+  estimatedTokenOut?: number;
+  txHash?: string;
+  status: 'PENDING' | 'COMPLETED' | 'FAILED';
+  errorMessage?: string;
+}
+
+/** docs §5.4 — GET /manual-ops/liquidity-unlock/:jobId → LiquidityUnlockJobDetailDto */
+export interface LiquidityUnlockJobDetailDto {
+  jobId: string;
+  status: ManualOpsJobStatus;
+  cycleId: string;
+  tokenId: string;
+  requestedTarget: LiquidityUnlockTarget;
+  resolvedTargets: ('POOL' | 'OWNER')[];
+  requestedPercent: number;
+  breakdown: LiquidityUnlockLegResultDto[];
+  errorMessage?: string;
+  durationMs?: number;
+  createdAt: string;
+  completedAt?: string;
 }

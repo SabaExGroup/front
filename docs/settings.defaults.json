@@ -1,33 +1,32 @@
 {
-  "cronExpression": "*/15 * * * *",
-  "networkPriority": ["SOLANA", "BSC"],
-  "maxInvestmentUsd": 11000,
-  "minTradeAmountUsd": 10,
+  "cronExpression": "*/30 * * * *",
+  "networkPriority": ["SOLANA"],
+  "maxInvestmentUsd": 14000,
+  "minTradeAmountUsd": 3,
   "minMarketCapUsd": 14000,
   "minLiquidityUsd": 2500,
   "minLiquidityRatio": 0.52,
   "minVolume5mUsd": 7500,
-  "marketWalletCount": 120,
+  "marketWalletCount": 100,
   "marketWalletUsageMode": "MULTI_USE",
   "securityMinScore": 10,
-  "maxTokenHoldPercent": 8,
+  "maxTokenHoldPercent": 7,
   "openaiModel": "gpt-5.5",
   "trendStyleDefault": "controversial",
   "strategy": {
     "defaultLaunchpad": "CUSTOM_RAYDIUM",
-    "ownerLaunchFundingUsd": 550,
+    "ownerLaunchFundingUsd": 1400,
     "tokenOwnerReuseEnabled": true,
-    "liquidityWalletFundingSol": 2.3,
-    "liquidityWalletReuseEnabled": false,
+    "liquidityWalletFundingSol": 65,
+    "liquidityWalletReuseEnabled": true,
     "mode": "BLITZ",
-    "targetPriceChangePercent": 320,
+    "targetPriceChangePercent": 650,
     "targetPriceChangePercentMin": 150,
-    "maxIgnitionDurationSeconds": 360,
+    "maxIgnitionDurationSeconds": 480,
     "targetTradesPerMinute": 420,
-    "ignitionDurationMinutes": 6,
+    "ignitionDurationMinutes": 8,
     "minVolume5mUsd": 7500,
     "minLiquidityRatio": 0.52,
-    "maxTokenHoldPercent": 8,
     "buyBiasPercent": 66,
     "jitoBundleAtLaunch": true,
     "preFundWallets": true,
@@ -41,11 +40,11 @@
       "gmgnPollSeconds": 6,
       "antiWashEnabled": true,
       "tradeAmountJitterPercent": 55,
-      "tradeDelayMsMin": 50,
-      "tradeDelayMsMax": 150,
+      "tradeDelayMsMin": 3000,
+      "tradeDelayMsMax": 8000,
       "maxTradesPerWallet": 30,
-      "walletCooldownSeconds": 3,
-      "minHoldBeforeSellSeconds": 4,
+      "walletCooldownSeconds": 15,
+      "minHoldBeforeSellSeconds": 45,
       "priorityFeeJitterPercent": 30,
       "slippageJitterPercent": 15,
       "preferReusedMarketWallets": true,
@@ -56,23 +55,74 @@
       "walletFundingAmountJitterPercent": 4,
       "walletGenerationStaggerMsMin": 300,
       "walletGenerationStaggerMsMax": 1500
+    }, 
+    "organicTimeline": {
+      "enabled": true,
+      "preEntryDelaySeconds": 10,
+      "organicOpenerEndSeconds": 45,
+      "botMagnetEndSeconds": 90,
+      "organicMaxBuys": 8,
+      "organicBuyDelayMinMs": 4000,
+      "organicBuyDelayMaxMs": 10000,
+      "magnetBuyDelayMinMs": 3000,
+      "magnetBuyDelayMaxMs": 8000,
+      "magnetTradesPerMinute": 90,
+      "magnetBuyBiasPercent": 74,
+      "magnetMinHoldBeforeSellSeconds": 45,
+      "magnetWalletCooldownSeconds": 20,
+      "organicWalletCooldownSeconds": 30,
+      "organicMinHoldBeforeSellSeconds": 120,
+      "blitzMinGraceSeconds": 90
+    },
+    "distribution": {
+      "enabled": true,
+      "telegramChatIds": ["-1004317150546"],
+      "postOnLaunch": true,
+      "postOnBotMagnet": true,
+      "launchDelaySeconds": 8,
+      "webhookUrl": "https://tprsp.app.n8n.cloud/webhook-test/token-distribution",
+      "includeChartLinks": true
+    },
+    "botCascade": {
+      "enabled": true,
+      "tradesPerMinuteMultiplier": 1.6,
+      "buyBiasBoostPercent": 6,
+      "pauseSellsSeconds": 20
     },
     "profitExtract": {
       "enabled": true,
       "marketProfitTaking": true,
-      "minMarketHoldPercent": 8,
+      "minMarketHoldPercent": 30,
       "sellBatchRatio": 0.25,
       "maxSellBatchPercent": 4.5,
       "sellBatchIntervalMinSec": 15,
       "sellBatchIntervalMaxSec": 45,
       "sellInRed": false,
       "slippageBps": 600,
-      "sweepNativeToWithdrawal": true,
+      "sweepNativeToWithdrawal": false,
       "postPeakGraceSec": 90,
       "postPeakDrainMaxSec": 720,
       "postPeakForceExtract": true,
       "postPeakSettleTimeoutSec": 120,
       "minExtractUsd": 0
+    },
+    "emergencyBrake": {
+      "sellMode": "DUMP",
+      "sellConcurrency": 3,
+      "sellStaggerMsMin": 120,
+      "sellStaggerMsMax": 350,
+      "sellOwnerLast": true,
+      "minPostUnlockPoolLiquiditySol": 0.05
+    },
+    "manualSell": {
+      "enabled": true,
+      "defaultSlippageBps": 300,
+      "maxPercentPerRequest": 100
+    },
+    "manualLiquidityUnlock": {
+      "enabled": true,
+      "defaultSlippageBps": 300,
+      "maxPercentPerRequest": 100
     },
     "weights": {
       "w_marketCap": 0.42,
@@ -81,7 +131,7 @@
       "w_organic": 0.08
     },
     "cycleSchedule": {
-      "automationEnabled": true,
+      "automationEnabled": false,
       "enabled": true,
       "schedulerTickCron": "*/15 * * * *",
       "peakOnly": true,
@@ -110,78 +160,107 @@
       "minMinutesBetweenCycles": 90,
       "maxCyclesPerDay": 3
     },
-    "organicTimeline": {
-      "enabled": true,
-      "preEntryDelaySeconds": 10,
-      "organicOpenerEndSeconds": 45,
-      "botMagnetEndSeconds": 90,
-      "organicMaxBuys": 8,
-      "organicBuyDelayMinMs": 4000,
-      "organicBuyDelayMaxMs": 10000,
-      "magnetBuyDelayMinMs": 3000,
-      "magnetBuyDelayMaxMs": 8000,
-      "magnetTradesPerMinute": 90,
-      "magnetBuyBiasPercent": 74,
-      "magnetMinHoldBeforeSellSeconds": 45,
-      "magnetWalletCooldownSeconds": 20,
-      "organicWalletCooldownSeconds": 30,
-      "organicMinHoldBeforeSellSeconds": 120,
-      "blitzMinGraceSeconds": 90
-    },
     "trendFinder": {
       "symbolLookbackDays": 30,
       "logoMaxAttempts": 4,
       "maxIdentityRegenerations": 2,
       "style": "controversial",
       "social": {
-        "telegramUrlPool": [],
-        "websiteUrlPool": [],
-        "twitterUrlPool": [],
+        "telegramUrlPool": [
+          "https://t.me/blackbullsolana",
+          "https://t.me/DEXTOOLSPUMPS",
+          "https://t.me/DeFimillion",
+          "https://t.me/icospeaksnews",
+          "https://t.me/ieopools",
+          "https://t.me/btcchamp",
+          "https://t.me/cryptoevolution",
+          "https://t.me/bitcointraffic",
+          "https://t.me/coinscapitals",
+          "https://t.me/icoadviser",
+          "https://t.me/crypto_solution",
+          "https://t.me/bitcoinmansory",
+          "https://t.me/chat_gpt_news",
+          "https://t.me/icospeakschannels",
+          "https://t.me/icospeaksru",
+          "https://t.me/icospeaks",
+          "https://t.me/icolisting",
+          "https://t.me/AlbemarlePortal",
+          "https://t.me/johnporkctosol",
+          "https://t.me/NyanOnBAGS",
+          "https://t.me/ROOKIEMEMECOIN",
+          "https://t.me/ZeusDogPortal",
+          "https://t.me/SOL_BABYTROLL",
+          "https://t.me/make_a_wish_solana",
+          "https://t.me/dogonpf"
+        ],
+        "websiteUrlPool": [
+          "https://www.blackbullsol.com",
+          "http://reclaim-mac.space",
+          "https://www.pepe.vip",
+          "https://trololol.io",
+          "https://www.neiroeth.io",
+          "https://nestusd.com",
+          "https://asteroideth.io",
+          "https://www.blackbullsol.com",
+          "https://www.toshithecat.com",
+          "https://axon-agents.com",
+          "https://marbleracing.gg",
+          "https://knowyourmeme.com/memes/crying-cat",
+          "https://tren.ch",
+          "https://probaball.market",
+          "https://www.apuonusdc.com",
+          "https://lootborne.xyz",
+          "https://oneofonefloorboss.online",
+          "https://datbihgahsol.com",
+          "https://fearlessfomo.com",
+          "https://babytroll-staking.online",
+          "https://johnporksol.fun",
+          "https://america-250-coin.com"
+        ],
+        "twitterUrlPool": [
+          "https://x.com/BlackBullSol",
+          "https://x.com/ledgerealms",
+          "https://x.com/MascotAsteroid",
+          "https://x.com/trylimitless",
+          "https://x.com/LeaderOnBsc",
+          "https://x.com/Chancecoin_sol",
+          "https://x.com/FableTheDegen",
+          "https://x.com/PEPEBULLONSOL_",
+          "https://x.com/Lootborne_game",
+          "https://x.com/pepecoineth",
+          "https://x.com/dphnAI",
+          "https://x.com/neiro",
+          "https://x.com/BlackBullSol",
+          "https://x.com/ManifestingXs",
+          "https://x.com/mamebnb",
+          "https://x.com/lobstercoinbnb",
+          "https://x.com/gitlawb",
+          "https://x.com/PlayKintara",
+          "https://x.com/testicletoken",
+          "https://x.com/KUKUMACTO",
+          "https://x.com/YeeErc20",
+          "https://x.com/trylimitless",
+          "https://x.com/PRXVTai",
+          "https://x.com/BurnieSendersX",
+          "https://x.com/0xMinted",
+          "https://x.com/wish_solana",
+          "https://x.com/LedgerealmsSol",
+          "https://x.com/SpurdoTweets",
+          "https://x.com/wif2hats",
+          "https://x.com/America250_Coin"
+        ],
         "twitterSearchEnabled": true,
         "twitterMinFollowers": 0
       }
-    },
-    "emergencyBrake": {
-      "sellMode": "TWAP",
-      "sellConcurrency": 3,
-      "sellStaggerMsMin": 120,
-      "sellStaggerMsMax": 350,
-      "sellOwnerLast": true,
-      "minPostUnlockPoolLiquiditySol": 0.05
-    },
-    "manualSell": {
-      "enabled": true,
-      "defaultSlippageBps": 300,
-      "maxPercentPerRequest": 100
-    },
-    "manualLiquidityUnlock": {
-      "enabled": true,
-      "defaultSlippageBps": 300,
-      "maxPercentPerRequest": 100
-    },
-    "distribution": {
-      "enabled": true,
-      "telegramChatIds": ["-1004317150546"],
-      "postOnLaunch": true,
-      "postOnBotMagnet": true,
-      "launchDelaySeconds": 8,
-      "includeChartLinks": true,
-      "webhookUrl": "https://YOUR-N8N-DOMAIN/webhook/token-distribution"
-    },
-    "botCascade": {
-      "enabled": true,
-      "tradesPerMinuteMultiplier": 1.6,
-      "buyBiasBoostPercent": 6,
-      "pauseSellsSeconds": 20
     }
   },
   "integrations": {
     "mainFeeWalletEvmPrivateKey": "",
     "nativeWithdrawalSolanaAddress": "",
     "nativeWithdrawalBscAddress": "",
-    "withdrawalUsdtProfitAddress": "",
     "nativeWithdrawalBscPrivateKey": "",
     "nativeWithdrawalSolanaPrivateKey": "",
+    "withdrawalUsdtProfitAddress": "",
     "gmgnApiKey": "",
     "gmgnPrivateKey": "",
     "changeNowApiKey": "",
@@ -194,11 +273,10 @@
     "openaiApiKey": "",
     "etherscanApiKey": "",
     "solanaScanApiKey": "",
-    "xBearerToken": "",
-    "ethereumRpcUrl": "https://YOUR_ENDPOINT.ethereum-mainnet.quiknode.pro/YOUR_QUICKNODE_TOKEN/",
-    "solanaRpcUrl": "https://YOUR_ENDPOINT.solana-mainnet.quiknode.pro/YOUR_QUICKNODE_TOKEN/",
-    "solanaRpcWsUrl": "",
-    "evmRpcUrl": "https://YOUR_ENDPOINT.bsc.quiknode.pro/YOUR_QUICKNODE_TOKEN/",
+    "ethereumRpcUrl": "https://orbital-blissful-asphalt.ethereum-mainnet.quiknode.pro/ec10f63ba3215675db4be9f175e14b5bb397abbd/",
+    "solanaRpcUrl": "https://broken-practical-tab.solana-mainnet.quiknode.pro/fc1bc935acf15cd315ec47c5e220ee14616311b0/",
+    "solanaRpcWsUrl": "wss://broken-practical-tab.solana-mainnet.quiknode.pro/fc1bc935acf15cd315ec47c5e220ee14616311b0/",
+    "evmRpcUrl": "https://capable-quaint-sponge.bsc.quiknode.pro/ec6daa2b879159f28523dae69a4794368023b28a/",
     "endpoints": {
       "gmgnBaseUrl": "https://openapi.gmgn.ai",
       "changeNowBaseUrlV1": "https://api.changenow.io/v1",
@@ -212,8 +290,8 @@
       "etherscanBaseUrl": "https://api.etherscan.io/v2/api",
       "solanaScanBaseUrl": "https://pro-api.solscan.io/v2.0",
       "jupiterQuoteApiUrl": "https://api.jup.ag",
-      "fxTwitterBaseUrl": "https://api.fxtwitter.com",
-      "xApiBaseUrl": "https://api.x.com"
+      "xApiBaseUrl": "https://api.x.com",
+      "fxTwitterBaseUrl": "https://api.fxtwitter.com"
     },
     "runtime": {
       "gmgn": {
@@ -312,26 +390,26 @@
         "wrappedSolMint": "So11111111111111111111111111111111111111112",
         "migrateType": "amm",
         "defaultBuySol": 0.01,
-        "pool": "raydium",
-        "priorityFeeSol": 0.0001
+        "pool": "bonk",
+        "priorityFeeSol": 0.00035
       },
       "customLaunch": {
         "totalSupply": "1000000000000000",
         "decimals": 6,
-        "initialLiquiditySol": 2,
-        "initialLiquidityTokenPercent": 80,
+        "initialLiquiditySol": 60,
+        "initialLiquidityTokenPercent": 95,
         "feeConfigIndex": 0,
         "slippageBps": 700,
         "emergencySlippageBps": 2500,
         "emergencyLiquidityUnlockSlippageBps": 800,
         "priorityFeeMicroLamports": 100000,
         "computeUnitLimit": 600000,
-      "sellerFeeBasisPoints": 0,
-      "devBuySol": 0.25,
-      "httpTimeoutMs": 60000,
-      "autoLockOwnerLiquidity": false,
-      "ownerLiquidityLockSolBuffer": 1
-    },
+        "sellerFeeBasisPoints": 0,
+        "devBuySol": 5,
+        "httpTimeoutMs": 60000,
+        "autoLockOwnerLiquidity": true,
+        "ownerLiquidityLockSolBuffer": 10
+      },
       "openai": {
         "chatTimeoutMs": 60000,
         "imageTimeoutMs": 600000,
@@ -345,6 +423,18 @@
       "http": {
         "defaultTimeoutMs": 10000,
         "defaultRetries": 3
+      },
+      "xTwitter": {
+        "httpTimeoutMs": 10000,
+        "httpRetries": 2,
+        "maxUsernamesPerRequest": 100,
+        "maxDiscoveryUsers": 24,
+        "profileLookupConcurrency": 4,
+        "profileProviderBaseUrls": [
+          "https://api.fxtwitter.com",
+          "https://api.vxtwitter.com"
+        ],
+        "socialLookupTimeoutMs": 20000
       },
       "solanaRpc": {
         "provider": "quicknode",
@@ -399,18 +489,6 @@
         "httpTimeoutMs": 30000,
         "httpRetries": 2
       },
-      "xTwitter": {
-        "httpTimeoutMs": 10000,
-        "httpRetries": 2,
-        "maxDiscoveryUsers": 24,
-        "profileLookupConcurrency": 4,
-        "maxUsernamesPerRequest": 100,
-        "socialLookupTimeoutMs": 20000,
-        "profileProviderBaseUrls": [
-          "https://api.fxtwitter.com",
-          "https://api.vxtwitter.com"
-        ]
-      },
       "explorer": {
         "httpTimeoutMs": 10000,
         "defaultBscChainId": 56,
@@ -423,12 +501,12 @@
     }
   },
   "telegram": {
-    "botToken": "",
-    "chatIds": []
+    "botToken": "8668347182:AAGPpEADTsabDLcbuA6IE67DO-4n4GP_lko",
+    "chatIds": ["8543848301"]
   },
   "proxy": {
     "enabled": true,
-    "url": ""
+    "url": "socks5://V9pmlfgz9QtqwgP:N9vq0uhBiSB4Fry@51.194.78.143:43066"
   },
   "treasury": {
     "consolidate": {
@@ -469,7 +547,7 @@
       "telegramNotifyOnComplete": true,
       "lifecycleRunTimeoutMinutes": 120,
       "autoDrain": {
-        "enabled": true,
+        "enabled": false,
         "everyNCycles": 6,
         "convertTo": "NATIVE",
         "networks": ["SOLANA", "BSC"],

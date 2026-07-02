@@ -1,0 +1,17 @@
+:host {
+  display: block;
+}
+
+.meta-list {
+  font-size: 0.875rem;
+}
+
+.meta-list dt {
+  color: var(--cui-secondary-color);
+  font-weight: 500;
+  margin-bottom: 0.125rem;
+}
+
+.meta-list dd {
+  margin-bottom: 0.75rem;
+}

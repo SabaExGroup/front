@@ -315,6 +315,16 @@
               <dd><code>{{ job.drainJobId }}</code> (poll via treasury lifecycle)</dd>
             }
 
+            @if (job.chainDrainJobId) {
+              <dt>Chain drain job ID</dt>
+              <dd><code>{{ job.chainDrainJobId }}</code> (native token chain drain)</dd>
+            }
+
+            @if (job.sweepNativeToWithdrawal != null) {
+              <dt>Swept native to withdrawal</dt>
+              <dd>{{ job.sweepNativeToWithdrawal ? 'Yes' : 'No' }}</dd>
+            }
+
             @if (job.message) {
               <dt>Message</dt>
               <dd>{{ job.message }}</dd>

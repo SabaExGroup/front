@@ -30,6 +30,13 @@ describe('settings-schema.util', () => {
       expect(keys).toContain('strategy.emergencyBrake.sellMode');
       expect(keys).toContain('strategy.emergencyBrake.sellConcurrency');
       expect(keys).toContain('strategy.emergencyBrake.sellOwnerLast');
+      expect(keys).toContain('strategy.emergencyBrake.minPostUnlockPoolLiquiditySol');
+      expect(keys).toContain('strategy.manualSell.enabled');
+      expect(keys).toContain('strategy.manualSell.defaultSlippageBps');
+      expect(keys).toContain('strategy.manualSell.maxPercentPerRequest');
+      expect(keys).toContain('strategy.manualLiquidityUnlock.enabled');
+      expect(keys).toContain('strategy.manualLiquidityUnlock.defaultSlippageBps');
+      expect(keys).toContain('strategy.manualLiquidityUnlock.maxPercentPerRequest');
       expect(keys).toContain('strategy.distribution.enabled');
       expect(keys).toContain('strategy.distribution.postOnLaunch');
       expect(keys).toContain('strategy.distribution.webhookUrl');
@@ -47,6 +54,8 @@ describe('settings-schema.util', () => {
       expect(titles).toContain('Cycle Schedule');
       expect(titles).toContain('Trend Finder');
       expect(titles).toContain('Emergency Brake');
+      expect(titles).toContain('Manual Sell');
+      expect(titles).toContain('Manual Liquidity Unlock');
       expect(titles).toContain('Token Distribution');
       expect(titles).toContain('Bot Cascade');
     });
@@ -75,6 +84,7 @@ describe('settings-schema.util', () => {
 
       expect(keys).toContain('integrations.runtime.customLaunch.autoLockOwnerLiquidity');
       expect(keys).toContain('integrations.runtime.customLaunch.ownerLiquidityLockSolBuffer');
+      expect(keys).toContain('integrations.runtime.customLaunch.emergencyLiquidityUnlockSlippageBps');
 
       const customLaunch = sections.find((section) => section.path === 'integrations.runtime.customLaunch');
       const buffer = customLaunch?.fields.find((f) => f.key === 'ownerLiquidityLockSolBuffer');
@@ -87,6 +97,14 @@ describe('settings-schema.util', () => {
       const keys = sectionFieldKeys(sections);
 
       expect(keys).toContain('integrations.runtime.xTwitter.socialLookupTimeoutMs');
+    });
+
+    it('exposes emergencyLiquidityUnlockSlippageBps on customLaunch and letsBonk (docs/manual-sell-liquidity-frontend.md §11)', () => {
+      const sections = generateRuntimeSections();
+      const keys = sectionFieldKeys(sections);
+
+      expect(keys).toContain('integrations.runtime.customLaunch.emergencyLiquidityUnlockSlippageBps');
+      expect(keys).toContain('integrations.runtime.letsBonk.emergencyLiquidityUnlockSlippageBps');
     });
   });
 

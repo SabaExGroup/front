@@ -480,6 +480,8 @@ export class EmergencyComponent implements OnInit {
       walletsAffected: res.walletsAffected,
       liquidityWalletsUnlocking: res.liquidityWalletsUnlocking,
       ownerLiquidityWalletsUnlocking: res.ownerLiquidityWalletsUnlocking,
+      chainDrainJobId: res.chainDrainJobId,
+      sweepNativeToWithdrawal: res.sweepNativeToWithdrawal,
       systemHalted: res.systemHalted,
       message: res.message,
     });

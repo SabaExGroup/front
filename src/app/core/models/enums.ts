@@ -133,6 +133,17 @@ export function cycleStatusBadgeColor(status: CycleStatus): string {
 export const CONSOLIDATE_JOB_STATUSES = ['QUEUED', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED'] as const;
 export type ConsolidateJobStatus = (typeof CONSOLIDATE_JOB_STATUSES)[number];
 
+/** docs/manual-sell-liquidity-frontend.md §3 — sell cycle 1 (MARKET) vs cycle 2 (TOKEN_OWNER). */
+export const MANUAL_SELL_RESOURCES = ['MARKET', 'TOKEN_OWNER'] as const;
+export type ManualSellResource = (typeof MANUAL_SELL_RESOURCES)[number];
+
+/** docs/manual-sell-liquidity-frontend.md §5.1 — liquidity unlock cycle 3 target selector. */
+export const LIQUIDITY_UNLOCK_TARGETS = ['POOL', 'OWNER', 'BOTH', 'AUTO'] as const;
+export type LiquidityUnlockTarget = (typeof LIQUIDITY_UNLOCK_TARGETS)[number];
+
+/** docs/manual-sell-liquidity-frontend.md §3.3/§5.4 — terminal statuses for sell + liquidity-unlock jobs. */
+export const MANUAL_OPS_JOB_TERMINAL = ['COMPLETED', 'PARTIAL', 'FAILED'] as const;
+
 export function jobStatusBadgeColor(status: string): string {
   switch (status) {
     case 'COMPLETED':
